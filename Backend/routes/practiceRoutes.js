@@ -1,0 +1,248 @@
+const express = require('express');
+const router = express.Router();
+const db = require('../db');
+
+
+//  API ดึงรายชื่อหมวดวิชาหลัก (Categories)
+router.get('/categories', async (req, res) => {
+    try {
+        const [categories] = await db.query(`SELECT DISTINCT category FROM parts WHERE category IS NOT NULL AND category != ''`);
+        // ส่งกลับไปเป็น Array ของชื่อหมวดหมู่ เช่น ['วิชาความรู้ความสามารถทั่วไป', 'วิชาภาษาอังกฤษ']
+        res.json(categories.map(c => c.category));
+    } catch (error) {
+        console.error("Error fetching categories:", error);
+        res.status(500).json({ error: "เซิร์ฟเวอร์มีปัญหาในการดึงหมวดวิชา" });
+    }
+});
+
+//  API ดึงรายชื่อพาร์ทย่อยตามหมวดวิชา (Parts by Category)
+router.get('/parts', async (req, res) => {
+    try {
+        const { category } = req.query;
+        if (!category) return res.status(400).json({ error: "กรุณาส่งชื่อหมวดวิชา (category) มาด้วย" });
+
+        const [parts] = await db.query(`SELECT id, part_name, category FROM parts WHERE category = ?`, [category]);
+        res.json(parts);
+    } catch (error) {
+        console.error("Error fetching parts:", error);
+        res.status(500).json({ error: "เซิร์ฟเวอร์มีปัญหาในการดึงพาร์ทวิชา" });
+    }
+});
+ 
+//  1. API สร้างรอบการสอบ (รับเป็น part_id แทน)
+router.post('/start', async (req, res) => {
+    try {
+        const { user_id, part_id } = req.body;
+
+        if (!user_id || !part_id) {
+            return res.status(400).json({ error: "กรุณาส่ง user_id และ part_id มาด้วย" });
+        }
+
+        const [result] = await db.query(
+            `INSERT INTO exam_sessions (user_id, session_type) VALUES (?, ?)`,
+            [user_id, `practice_part_${part_id}`]
+        );
+
+        res.json({
+            message: "สร้างรอบการสอบแบบ MST สำเร็จ",
+            session_id: result.insertId,
+            total_questions: 20
+        });
+
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการเริ่มสอบ:", error);
+        res.status(500).json({ error: "เซิร์ฟเวอร์มีปัญหา" });
+    }
+});
+
+//  2. API โหมดฝึกทำ: ดึงข้อสอบ (รับเป็น part_id แทน)
+router.get('/question', async (req, res) => {
+    try {
+        const { user_id, part_id, session_id } = req.query;
+
+        if (!user_id || !part_id || !session_id) {
+            return res.status(400).json({ error: "กรุณาส่งข้อมูลมาให้ครบ (user_id, part_id, session_id)" });
+        }
+
+        const partIdNum = parseInt(part_id); // แปลงเป็นตัวเลขชัวร์ๆ
+
+        // ไม่ต้อง SELECT id จาก parts แล้ว ตัดโค้ดที่ทำ Error ทิ้งไปเลย!
+
+        // 1. ดึงประวัติการตอบในรอบนี้
+        const [answers] = await db.query(`
+            SELECT ua.user_answer, q.correct_answer 
+            FROM user_answers ua
+            JOIN questions q ON ua.question_id = q.id
+            WHERE ua.session_id = ?
+            ORDER BY ua.answered_at ASC
+        `, [session_id]);
+
+        const answeredCount = answers.length;
+        if (answeredCount >= 20) {
+            return res.json({ is_finished: true, message: "สอบครบ 20 ข้อแล้วครับ" });
+        }
+
+        // 2. ดึงค่าความเก่งตั้งต้น
+        let [skills] = await db.query(`SELECT proficiency_level FROM user_skills WHERE user_id = ? AND part_id = ?`, [user_id, partIdNum]);
+        let targetLevel = (skills.length > 0 && skills[0].proficiency_level > 0) ? skills[0].proficiency_level : 3;
+
+        // 3.  ลอจิก MST (แบ่งด่านประมวลผล)
+        let currentStage = 1;
+
+        if (answeredCount >= 7) {
+            currentStage = 2;
+            let stage1Correct = answers.slice(0, 7).filter(a => {
+                const userAns = a.user_answer.trim();
+                const corrAns = a.correct_answer.trim();
+                return userAns.startsWith(corrAns) || userAns === corrAns;
+            }).length;
+
+            if (stage1Correct >= 5) targetLevel = Math.min(targetLevel + 1, 5); 
+            else if (stage1Correct <= 3) targetLevel = Math.max(targetLevel - 1, 1);
+        }
+
+        if (answeredCount >= 14) {
+            currentStage = 3;
+            let stage2Correct = answers.slice(7, 14).filter(a => {
+                const userAns = a.user_answer.trim();
+                const corrAns = a.correct_answer.trim();
+                return userAns.startsWith(corrAns) || userAns === corrAns;
+            }).length;
+
+            if (stage2Correct >= 5) targetLevel = Math.min(targetLevel + 1, 5);
+            else if (stage2Correct <= 3) targetLevel = Math.max(targetLevel - 1, 1);
+        }
+
+        // 4. สุ่มดึงข้อสอบ
+        const [questions] = await db.query(`
+            SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d, exam_year 
+            FROM questions 
+            WHERE part_id = ? AND difficulty_level = ? 
+            AND id NOT IN (SELECT question_id FROM user_answers WHERE session_id = ?)
+            ORDER BY RAND() LIMIT 1
+        `, [partIdNum, targetLevel, session_id]);
+
+        if (questions.length === 0) {
+            return res.status(404).json({ error: `ตะกร้าข้อสอบ Level ${targetLevel} ของหมวดนี้หมดชั่วคราวครับ` });
+        }
+
+        const q = questions[0];
+        q.options = [q.option_a, q.option_b, q.option_c, q.option_d];
+        delete q.option_a; delete q.option_b; delete q.option_c; delete q.option_d;
+
+        res.json({
+            stage: currentStage,
+            question_number: answeredCount + 1,
+            current_difficulty: targetLevel,
+            question: q
+        });
+
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดใน API ดึงข้อสอบ:", error);
+        res.status(500).json({ error: "เซิร์ฟเวอร์มีปัญหา" });
+    }
+});
+
+//  3. API โหมดฝึกทำ: ตรวจคำตอบ (รับเป็น part_id แทน)
+router.post('/submit', async (req, res) => {
+    try {
+        const { user_id, session_id, question_id, part_id, user_answer } = req.body;
+
+        if (!user_id || !session_id || !question_id || !part_id || !user_answer) {
+            return res.status(400).json({ error: "ส่งข้อมูลมาไม่ครบครับ" });
+        }
+
+        const partIdNum = parseInt(part_id);
+
+        const [questions] = await db.query(`SELECT correct_answer, explanation, difficulty_level FROM questions WHERE id = ?`, [question_id]);
+        
+        const correctAnswer = questions[0].correct_answer.trim();
+        const explanation = questions[0].explanation;
+        const difficulty = questions[0].difficulty_level;
+        const cleanUserAnswer = user_answer.trim();
+
+        const isCorrect = cleanUserAnswer.startsWith(correctAnswer) || cleanUserAnswer === correctAnswer;
+
+        await db.query(
+            `INSERT INTO user_answers (session_id, question_id, user_answer) VALUES (?, ?, ?)`,
+            [session_id, question_id, user_answer]
+        );
+
+        let earnedScore = 0;
+        if (isCorrect) {
+            earnedScore = difficulty; 
+            await db.query(`UPDATE exam_sessions SET total_score = total_score + ? WHERE id = ?`, [earnedScore, session_id]);
+        }
+
+        const [answerCount] = await db.query(`SELECT COUNT(*) as total FROM user_answers WHERE session_id = ?`, [session_id]);
+        const totalAnswered = answerCount[0].total;
+        const isFinished = totalAnswered >= 20;
+
+       // ถ้าทำครบ 20 ข้อ ให้คำนวณและบันทึกคะแนนสะสม
+        if (isFinished) {
+            await db.query(`UPDATE exam_sessions SET is_completed = TRUE, completed_at = CURRENT_TIMESTAMP WHERE id = ?`, [session_id]);
+            
+            // 1. ดึงคะแนนที่ผู้ใช้ทำได้ในรอบนี้
+            const [[sessionData]] = await db.query(`SELECT total_score FROM exam_sessions WHERE id = ?`, [session_id]);
+            const userScore = sessionData.total_score || 0;
+
+            
+           // 2.  อัปเดต Level และ "บวกคะแนนสะสม (accumulated_score)" ลง user_skills
+            await db.query(`
+                INSERT INTO user_skills (user_id, part_id, proficiency_level, accumulated_score) 
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    proficiency_level = ?, 
+                    accumulated_score = accumulated_score + ?`,
+                [user_id, partIdNum, difficulty, userScore, difficulty, userScore] 
+            );
+
+            // 3. หาแต้มเต็มสูงสุดของ 20 ข้อที่เพิ่งทำไป เพื่อเอามาคิด % ให้ดูหน้าบ้าน
+            const [[scoreInfo]] = await db.query(`
+                SELECT SUM(q.difficulty_level) AS max_possible_score
+                FROM user_answers ua
+                JOIN questions q ON ua.question_id = q.id
+                WHERE ua.session_id = ?
+            `, [session_id]);
+
+            const maxPossibleScore = scoreInfo.max_possible_score || 1;
+            const finalPercentage = ((userScore / maxPossibleScore) * 100).toFixed(2);
+
+            // 4. คืนค่ากลับไปพร้อมก้อน summary สรุปผล
+            return res.json({
+                is_correct: isCorrect,
+                earned_score: earnedScore,
+                correct_answer: correctAnswer,
+                explanation: explanation,
+                current_level: difficulty,
+                total_answered: totalAnswered,
+                is_finished: true,
+                summary: {
+                    user_score: userScore,
+                    max_score: maxPossibleScore,
+                    percentage: finalPercentage,
+                    status: 'FINISHED'
+                }
+            });
+        }
+
+        // กรณีที่ยังไม่ครบ 20 ข้อ (ส่งข้อมูลปกติ)
+        res.json({
+            is_correct: isCorrect,
+            earned_score: earnedScore,
+            correct_answer: correctAnswer,
+            explanation: explanation,
+            current_level: difficulty,
+            total_answered: totalAnswered,
+            is_finished: false
+        });
+
+        
+
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการตรวจคำตอบ:", error);
+        res.status(500).json({ error: "เซิร์ฟเวอร์มีปัญหา" });
+    }
+});
+
+module.exports = router;
