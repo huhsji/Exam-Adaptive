@@ -33,40 +33,72 @@ router.post('/generate', async (req, res) => {
 
             if (parts.length === 0) return [];
 
-            let questionsPool = []; // สร้างตะกร้าใหญ่เพื่อเก็บข้อสอบรวม
+            // สร้างตะกร้า 3 ใบเพื่อแยกข้อสอบตามระดับความยาก
+            let easyPool = [];     // ตะกร้าข้อง่าย (Level ต่ำกว่าปัจจุบัน)
+            let currentPool = [];  // ตะกร้าข้อพอดีเลเวล (Level ปัจจุบัน)
+            let hardPool = [];     // ตะกร้าข้อยากท้าทาย (Level สูงกว่าปัจจุบัน)
 
             for (let row of parts) {
                 const partId = row.id;
                 const partName = row.part_name;
                 
-                // ถ้ามีสกิลให้ใช้เลเวลนั้น ถ้าไม่มี (เด็กใหม่) ให้เริ่มที่เลเวล 3
+                //ดึงสกิลของพาร์ทนี้ ถ้าไม่มีให้เริ่มที่เลเวล 3
                 const diffLevel = userSkillMap[partName] || 3; 
+                const easyLevel = Math.max(diffLevel - 1, 1);
+                const challengeLevel = Math.min(diffLevel + 1, 5); 
 
-                //  แก้ไข: ให้ดึงเผื่อมาเลย (ดึงมาให้เยอะที่สุดเท่าที่จะเป็นไปได้ในพาร์ทนี้)
+                // ดึงข้อสอบแบบสุ่มของพาร์ทนี้ขึ้นมาเผื่อไว้ (LIMIT 40 เพื่อดึงมาตุนไว้ในโกดัง)
                 const [qList] = await db.query(`
                     SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d, exam_year, explanation, correct_answer
                     FROM questions
-                    WHERE part_id = ? AND difficulty_level = ?
-                    ORDER BY RAND() LIMIT ?
-                `, [partId, diffLevel, quotaLimit]); // เปลี่ยนจาก limitPerSub เป็น quotaLimit
+                    WHERE part_id = ? AND difficulty_level IN (?, ?, ?)
+                    ORDER BY RAND() LIMIT 40
+                `, [partId, easyLevel, diffLevel, challengeLevel]);
 
-                // แปลงช้อยส์จับมัดรวมเป็น Array
-                const formattedQuestions = qList.map(q => {
+                // แยกข้อสอบโยนลงตะกร้าแต่ละใบ
+                qList.forEach(q => {
+                    // แปลงช้อยส์จับมัดรวมเป็น Array
                     const optionsArray = [q.option_a, q.option_b, q.option_c, q.option_d];
                     delete q.option_a; delete q.option_b; delete q.option_c; delete q.option_d;
-                    return { ...q, options: optionsArray };
-                });
+                    const formattedQ = { ...q, options: optionsArray };
 
-                questionsPool.push(...formattedQuestions); // โยนใส่ตะกร้าใหญ่
+                    // เช็กว่าข้อนี้ควรอยู่ตะกร้าไหน (อิงตามเลเวลของพาร์ทนี้)
+                    if (q.difficulty_level === diffLevel) {
+                        currentPool.push(formattedQ);
+                    } else if (q.difficulty_level < diffLevel) {
+                        easyPool.push(formattedQ);
+                    } else if (q.difficulty_level > diffLevel) {
+                        hardPool.push(formattedQ);
+                    }
+                });
             }
 
-            //  สลับข้อสอบในตะกร้าหมวดนี้ให้คละๆ กัน (Shuffle) ไม่ให้กระจุกอยู่พาร์ทเดียว
-            questionsPool.sort(() => Math.random() - 0.5);
+            // เขย่าตะกร้าแต่ละใบให้มั่ว (ข้อสอบจากทุกพาร์ทจะผสมกัน)
+            easyPool.sort(() => Math.random() - 0.5);
+            currentPool.sort(() => Math.random() - 0.5);
+            hardPool.sort(() => Math.random() - 0.5);
 
-            //  ตัดแบ่งเอาไปใช้แค่เท่ากับจำนวนโควตาเป๊ะๆ (เช่น ขอ 50 ก็ตัดไป 50)
-            return questionsPool.slice(0, quotaLimit);
+            // คำนวณโควตาว่าจะหยิบจากตะกร้าไหนกี่ข้อ (สัดส่วน 10 - 80 - 10)
+            const easyQuota = Math.floor(quotaLimit * 0.1); 
+            const hardQuota = Math.floor(quotaLimit * 0.1); 
+
+            let finalQuestions = [];
+
+            // หยิบข้อง่าย และข้อยาก ใส่ชุดข้อสอบจริงก่อน
+            finalQuestions.push(...easyPool.slice(0, easyQuota));
+            finalQuestions.push(...hardPool.slice(0, hardQuota));
+
+            // โควตาที่เหลือทั้งหมด (80% หรือส่วนที่ยังขาด) ให้ไปโกยมาจากตะกร้าเลเวลหลัก
+            const remainingQuota = quotaLimit - finalQuestions.length;
+            finalQuestions.push(...currentPool.slice(0, remainingQuota));
+
+            // เขย่ารวมครั้งสุดท้าย เพื่อไม่ให้ข้อง่ายไปกองอยู่ข้อแรกๆ
+            finalQuestions.sort(() => Math.random() - 0.5);
+
+            return finalQuestions;
         };
 
+        // [ส่วนที่พี่ฮัชเผลอลบทิ้งไป] 
         // 2. สั่งดึงข้อสอบตามโควตา 50 - 25 - 25
         const part1 = await fetchQuestions('วิชาความรู้ความสามารถในการคิดวิเคราะห์', 50);
         const part2 = await fetchQuestions('วิชาภาษาอังกฤษ', 25);
@@ -83,6 +115,7 @@ router.post('/generate', async (req, res) => {
             `INSERT INTO exam_sessions (user_id, session_type) VALUES (?, ?)`,
             [user_id, 'mock_exam_100']
         );
+       
 
         // 6. ส่งชุดข้อสอบกลับไปให้หน้าบ้าน
         res.json({

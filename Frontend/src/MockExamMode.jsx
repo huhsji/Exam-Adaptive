@@ -330,7 +330,7 @@ export default function MockExamMode() {
                     </div>
                 )}
 
-                {/* 📍 หน้า 4: เฉลยละเอียด */}
+                {/*  หน้า 4: เฉลยละเอียด */}
                 {step === 'review' && (
                     <div style={{ background: '#FFFFFF', padding: '40px', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                         

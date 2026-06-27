@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import PracticeMode from './PracticeMode'; 
 import MockExamMode from './MockExamMode'; 
 import AdminAddQuestion from './AdminAddQuestion'; 
+import DashboardCharts from './DashboardCharts'; // 🎯 1. Import กราฟเข้ามา
 
 function App() {
   const [currentMode, setCurrentMode] = useState(null); // null = หน้าเมนูหลัก
+  const userId = 1; // 🎯 สมมติ userId ไว้ก่อน
 
   return (
     <div style={{ fontFamily: '"Kanit", sans-serif', backgroundColor: '#F3F4F6', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -68,7 +70,7 @@ function App() {
         }
       `}</style>
 
-      {/* 📍 แถบเมนูด้านบน (อัปเกรดใหม่) */}
+      {/* 📍 แถบเมนูด้านบน */}
       <div className="nav-header">
         <div className="brand-container" onClick={() => setCurrentMode(null)}>
           <div className="brand-icon-box">
@@ -96,14 +98,15 @@ function App() {
 
       {/* หน้าเลือกโหมด (แสดงตอน currentMode เป็น null) */}
       {!currentMode && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '40px 20px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: '50px', paddingBottom: '60px' }}>
           
-          <div style={{ textAlign: 'center', marginBottom: '50px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <h1 style={{ color: '#1A365D', margin: '0 0 10px 0', fontSize: '32px', fontWeight: '600' }}>เลือกโหมดการใช้งาน</h1>
             <p style={{ color: '#6B7280', fontSize: '16px', margin: 0 }}>พัฒนาศักยภาพของคุณด้วยระบบทดสอบที่ได้มาตรฐาน</p>
           </div>
           
-          <div style={{ display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '1000px' }}>
+          {/* กล่องเมนูทั้ง 3 กล่อง */}
+          <div style={{ display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '1000px', margin: '0 auto 60px auto' }}>
             
             {/* กล่องโหมดฝึกทำ */}
             <div className="menu-card card-practice" onClick={() => setCurrentMode('practice')}>
@@ -133,6 +136,10 @@ function App() {
             </div>
 
           </div>
+
+          {/* 🎯 2. ย้าย DashboardCharts มาไว้ตรงนี้ (ใต้เมนู) */}
+          <DashboardCharts userId={userId} />
+
         </div>
       )}
 
