@@ -2,18 +2,19 @@ import React, { useState } from 'react';
 import PracticeMode from './PracticeMode'; 
 import MockExamMode from './MockExamMode'; 
 import AdminAddQuestion from './AdminAddQuestion'; 
-import DashboardCharts from './DashboardCharts'; // 🎯 1. Import กราฟเข้ามา
+import DashboardCharts from './DashboardCharts'; 
+import StudyPlanner from './StudyPlanner'; // 🎯 1. Import Component Planner เข้ามา
 
 function App() {
   const [currentMode, setCurrentMode] = useState(null); // null = หน้าเมนูหลัก
-  const userId = 1; // 🎯 สมมติ userId ไว้ก่อน
+  const userId = 1; // สมมติ userId ไว้ก่อน
 
   return (
     <div style={{ fontFamily: '"Kanit", sans-serif', backgroundColor: '#F3F4F6', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap');
         
-        /* 🌟 ลบขอบขาวเริ่มต้นของ Browser ทิ้งให้กางเต็มจอ 100% 🌟 */
+        /* ลบขอบขาวเริ่มต้นของ Browser ทิ้งให้กางเต็มจอ 100% */
         html, body {
             margin: 0;
             padding: 0;
@@ -21,7 +22,7 @@ function App() {
             height: 100%;
         }
 
-        /* 🌟 อัปเกรด Navbar ให้ดูพรีเมียม */
+        /* อัปเกรด Navbar ให้ดูพรีเมียม */
         .nav-header { 
             background: linear-gradient(90deg, #1A365D 0%, #2A4365 100%); 
             border-bottom: 3px solid #D69E2E;
@@ -48,12 +49,15 @@ function App() {
         .menu-card { background: #FFFFFF; padding: 40px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); cursor: pointer; width: 300px; transition: all 0.3s ease; border-top: 4px solid transparent; display: flex; flex-direction: column; align-items: center; text-align: center; }
         .menu-card:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
         
+        /* สีของขอบบนการ์ดเวลา Hover */
         .card-practice:hover { border-top-color: #3182CE; }
         .card-mock:hover { border-top-color: #D69E2E; }
+        .card-planner:hover { border-top-color: #10B981; } /* สีเขียวสำหรับ Planner */
+        
         .card-admin { background: #F8FAFC; border: 1px dashed #CBD5E1; border-top: none; }
         .card-admin:hover { border-color: #94A3B8; background: #F1F5F9; border-top: none; transform: translateY(-4px); }
 
-        /* 🌟 อัปเกรดปุ่มย้อนกลับ */
+        /* อัปเกรดปุ่มย้อนกลับ */
         .btn-back { 
             background: rgba(255,255,255,0.05); 
             color: white; 
@@ -70,7 +74,7 @@ function App() {
         }
       `}</style>
 
-      {/* 📍 แถบเมนูด้านบน */}
+      {/* แถบเมนูด้านบน */}
       <div className="nav-header">
         <div className="brand-container" onClick={() => setCurrentMode(null)}>
           <div className="brand-icon-box">
@@ -105,7 +109,7 @@ function App() {
             <p style={{ color: '#6B7280', fontSize: '16px', margin: 0 }}>พัฒนาศักยภาพของคุณด้วยระบบทดสอบที่ได้มาตรฐาน</p>
           </div>
           
-          {/* กล่องเมนูทั้ง 3 กล่อง */}
+          {/* กล่องเมนู */}
           <div style={{ display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '1000px', margin: '0 auto 60px auto' }}>
             
             {/* กล่องโหมดฝึกทำ */}
@@ -114,7 +118,7 @@ function App() {
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3182CE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
               </div>
               <h2 style={{ color: '#1A365D', margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600' }}>โหมดฝึกทำ (Practice)</h2>
-              <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>เลือกลุยทีละพาร์ท ระบบปรับความยากง่ายอัตโนมัติตามความสามารถ พร้อมเฉลยละเอียด</p>
+              <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>เลือกลุยทีละพาร์ท ระบบปรับความยากง่ายอัตโนมัติตามความสามารถ</p>
             </div>
 
             {/* กล่องโหมดสอบจริง */}
@@ -124,6 +128,15 @@ function App() {
               </div>
               <h2 style={{ color: '#1A365D', margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600' }}>จำลองสอบจริง (Mock Exam)</h2>
               <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>ทำข้อสอบชุดใหญ่ 100 ข้อ จับเวลา 3 ชั่วโมง เหมือนลงสนามสอบจริง</p>
+            </div>
+
+            {/* 🎯 2. เพิ่มกล่องเมนู Planner ตรงนี้ */}
+            <div className="menu-card card-planner" onClick={() => setCurrentMode('planner')}>
+              <div style={{ background: '#F0FDF4', padding: '16px', borderRadius: '50%', marginBottom: '20px' }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              </div>
+              <h2 style={{ color: '#1A365D', margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600' }}>ตารางอัจฉริยะ (Planner)</h2>
+              <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>วิเคราะห์จุดอ่อนและจัดตารางติวให้อัตโนมัติ พร้อมนับถอยหลังสู่วันสอบ</p>
             </div>
 
             {/* กล่องจัดการข้อสอบ (Admin) */}
@@ -137,17 +150,17 @@ function App() {
 
           </div>
 
-          {/* 🎯 2. ย้าย DashboardCharts มาไว้ตรงนี้ (ใต้เมนู) */}
           <DashboardCharts userId={userId} />
 
         </div>
       )}
 
-      {/* เรียกใช้งาน Component ตามที่เลือก */}
+      {/* 🎯 3. เรียกใช้งาน Component ตามที่เลือก */}
       {currentMode && (
         <div style={{ flex: 1 }}>
           {currentMode === 'practice' && <PracticeMode />}
           {currentMode === 'mock' && <MockExamMode />}
+          {currentMode === 'planner' && <StudyPlanner />}
           {currentMode === 'admin' && <AdminAddQuestion />}
         </div>
       )}

@@ -20,6 +20,9 @@ app.use('/api/practice' , practiceRoutes);
 const mockExamRoutes = require('./routes/mockExamRoutes');
 app.use('/mock', mockExamRoutes);
 
+const plannerRoutes = require('./routes/plannerRoutes'); // ปรับ path ให้ตรงโฟลเดอร์ของพี่ฮัช
+app.use('/api/planner', plannerRoutes);
+
 const adminRoutes = require('./routes/admin'); 
 app.use('/', adminRoutes);
 
