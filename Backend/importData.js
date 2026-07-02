@@ -2,9 +2,9 @@ const XLSX = require('xlsx');
 const db = require('./db');
 
 async function importExamData() {
-    // 🎯 ใส่ชื่อไฟล์ของพี่ (อย่าลืมเปลี่ยนเป็นไฟล์ที่ต้องการนำเข้าครับ)
-    const fileName = 'Mock กพ.xlsx'; 
-    console.log(`⏳ กำลังเริ่มนำเข้าข้อมูลข้อสอบจากไฟล์ Excel: ${fileName}...`);
+    //  ใส่ชื่อไฟล์ของพี่ (อย่าลืมเปลี่ยนเป็นไฟล์ที่ต้องการนำเข้าครับ)
+    const fileName = 'กพ 2559.xlsx'; 
+    console.log(` กำลังเริ่มนำเข้าข้อมูลข้อสอบจากไฟล์ Excel: ${fileName}...`);
 
     try {
         const workbook = XLSX.readFile(fileName);
@@ -30,7 +30,7 @@ async function importExamData() {
 
             if (!questionText || !partName) continue;
 
-            // 🌟 พระเอกอยู่ตรงนี้: ดักจับบรรทัดที่ช้อยส์ยังเป็นก้อน JSON
+            //  พระเอกอยู่ตรงนี้: ดักจับบรรทัดที่ช้อยส์ยังเป็นก้อน JSON
             if (optionA && optionA.startsWith('[') && optionA.endsWith(']')) {
                 try {
                     // แปลงก้อน JSON เป็น Array แล้วจับแยกช่องให้
@@ -50,14 +50,14 @@ async function importExamData() {
                     examYear = actualExamYear;
                     explanation = actualExplanation;
                 } catch (e) {
-                    console.log(`⚠️ ข้ามข้อเนื่องจากแปลงช้อยส์ไม่ได้: ${questionText}`);
+                    console.log(` ข้ามข้อเนื่องจากแปลงช้อยส์ไม่ได้: ${questionText}`);
                     continue;
                 }
             }
 
             // ถ้าไม่มีเฉลยจริงๆ ให้ข้ามไป จะได้ไม่พัง
             if (!correctAnswer) {
-                console.log(`⚠️ ข้ามข้อที่ไม่มีเฉลย: ${questionText.substring(0, 30)}...`);
+                console.log(` ข้ามข้อที่ไม่มีเฉลย: ${questionText.substring(0, 30)}...`);
                 continue;
             }
 
@@ -77,11 +77,11 @@ async function importExamData() {
             successCount++;
         }
 
-        console.log(`\n✅ นำเข้าข้อสอบสำเร็จทั้งหมด ${successCount} ข้อ! โคตรตึง!`);
+        console.log(`\n นำเข้าข้อสอบสำเร็จทั้งหมด ${successCount} ข้อ`);
         process.exit(0);
 
     } catch (error) {
-        console.error("❌ เกิดข้อผิดพลาดตอนนำเข้าข้อมูล:", error);
+        console.error(" เกิดข้อผิดพลาดตอนนำเข้าข้อมูล:", error);
         process.exit(1);
     }
 }

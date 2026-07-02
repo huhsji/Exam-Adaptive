@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
-export default function StudyPlanner({ onStartPractice }) {
+
+export default function StudyPlanner({ userId, onStartPractice }) {
     const [plannerData, setPlannerData] = useState({ target_exam_date: null, planners: [], progress: [] });
     const [inputDate, setInputDate] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
 
-    const userId = 1;
+    
 
     const fetchPlanner = async () => {
         setIsLoading(true);
@@ -25,7 +26,7 @@ export default function StudyPlanner({ onStartPractice }) {
 
     useEffect(() => {
         fetchPlanner();
-    }, []);
+    }, [userId]); //  [แก้ไข 2] ใส่ userId ใน array นี้ด้วย เพื่อให้มันดึงข้อมูลใหม่ถ้ามีการเปลี่ยนไอดี
 
     const handleGeneratePlan = async () => {
         if (!inputDate) return alert("กรุณาเลือกวันสอบเป้าหมายก่อนครับ!");
@@ -80,7 +81,7 @@ export default function StudyPlanner({ onStartPractice }) {
         if(catName.includes('ข้าราชการ')) return { color: '#3B82F6', target: 60 };
         return { color: '#10B981', target: 60 }; // คิดวิเคราะห์
     };
-    
+
     return (
         <div style={{ maxWidth: '900px', margin: '40px auto', padding: '0 20px', fontFamily: '"Kanit", sans-serif' }}>
             

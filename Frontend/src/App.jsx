@@ -1,13 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PracticeMode from './PracticeMode'; 
 import MockExamMode from './MockExamMode'; 
 import AdminAddQuestion from './AdminAddQuestion'; 
 import DashboardCharts from './DashboardCharts'; 
-import StudyPlanner from './StudyPlanner'; // 🎯 1. Import Component Planner เข้ามา
+import StudyPlanner from './StudyPlanner'; 
+import AuthPage from './AuthPage';
 
 function App() {
-  const [currentMode, setCurrentMode] = useState(null); // null = หน้าเมนูหลัก
-  const userId = 1; // สมมติ userId ไว้ก่อน
+  //  1. ดึงข้อมูลจาก localStorage มาตั้งเป็นค่าเริ่มต้น
+  const [currentUser, setCurrentUser] = useState(() => {
+      const savedUser = localStorage.getItem('currentUser');
+      return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  const [currentMode, setCurrentMode] = useState(() => {
+      return localStorage.getItem('currentMode') || null;
+  });
+
+  const [targetPracticeId, setTargetPracticeId] = useState(() => {
+      const savedId = localStorage.getItem('targetPracticeId');
+      return savedId ? parseInt(savedId, 10) : null;
+  });
+
+  //  2. สร้าง useEffect เพื่อเซฟข้อมูลลงเครื่องอัตโนมัติ ทุกครั้งที่มีการเปลี่ยน State
+  useEffect(() => {
+      if (currentUser) localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      else localStorage.removeItem('currentUser');
+  }, [currentUser]);
+
+  useEffect(() => {
+      if (currentMode) localStorage.setItem('currentMode', currentMode);
+      else localStorage.removeItem('currentMode');
+  }, [currentMode]);
+
+  useEffect(() => {
+      if (targetPracticeId !== null) localStorage.setItem('targetPracticeId', targetPracticeId);
+      else localStorage.removeItem('targetPracticeId');
+  }, [targetPracticeId]);
+
+
+  // 🎯 ถ้ายังไม่ล็อกอิน ให้แสดงหน้า AuthPage
+  if (!currentUser) {
+      return <AuthPage onLoginSuccess={(userData) => setCurrentUser(userData)} />;
+  }
+
+  // ดึง userId ออกมาจากข้อมูลคนที่ล็อกอิน
+  const userId = currentUser.id;
+
+  const handleLogout = () => {
+      const confirmLogout = window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?');
+      if (confirmLogout) {
+          setCurrentUser(null);
+          setCurrentMode(null);
+          setTargetPracticeId(null); // ล้างพาร์ทที่ค้างไว้ด้วย
+      }
+  };
+
+  const handleBackToMain = () => {
+    // ล้างค่าโหมดฝึกทำเมื่อกดกลับ
+    localStorage.removeItem('practice_step');
+    localStorage.removeItem('practice_category');
+    localStorage.removeItem('practice_part');
+    localStorage.removeItem('practice_session_id');
+    localStorage.removeItem('practice_part_id');
+    
+    setCurrentMode(null);
+};
 
   return (
     <div style={{ fontFamily: '"Kanit", sans-serif', backgroundColor: '#F3F4F6', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -72,6 +130,20 @@ function App() {
             border-color: #D69E2E; 
             color: #D69E2E; 
         }
+
+        /* ปุ่มออกจากระบบ */
+        .btn-logout {
+            background: transparent;
+            color: #E2E8F0;
+            border: 1px solid transparent;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer; font-size: 14px; transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            color: #EF4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
       `}</style>
 
       {/* แถบเมนูด้านบน */}
@@ -92,12 +164,23 @@ function App() {
           </h2>
         </div>
         
-        {currentMode && (
-           <button className="btn-back" onClick={() => setCurrentMode(null)}>
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-             กลับหน้าเมนูหลัก
-           </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            {/* แสดงชื่อคนล็อกอิน */}
+            {!currentMode && (
+                <span style={{ fontSize: '14px', color: '#CBD5E1' }}>
+                    ยินดีต้อนรับ, <strong>{currentUser.name}</strong>
+                </span>
+            )}
+
+            {currentMode ? (
+               <button className="btn-back" onClick={handleBackToMain}>
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                 กลับหน้าเมนูหลัก
+               </button>
+            ) : (
+               <button className="btn-logout" onClick={handleLogout}>ออกจากระบบ</button>
+            )}
+        </div>
       </div>
 
       {/* หน้าเลือกโหมด (แสดงตอน currentMode เป็น null) */}
@@ -130,7 +213,7 @@ function App() {
               <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>ทำข้อสอบชุดใหญ่ 100 ข้อ จับเวลา 3 ชั่วโมง เหมือนลงสนามสอบจริง</p>
             </div>
 
-            {/* 🎯 2. เพิ่มกล่องเมนู Planner ตรงนี้ */}
+            {/*  เพิ่มกล่องเมนู Planner ตรงนี้ */}
             <div className="menu-card card-planner" onClick={() => setCurrentMode('planner')}>
               <div style={{ background: '#F0FDF4', padding: '16px', borderRadius: '50%', marginBottom: '20px' }}>
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -155,12 +238,32 @@ function App() {
         </div>
       )}
 
-      {/* 🎯 3. เรียกใช้งาน Component ตามที่เลือก */}
+      {/*  เรียกใช้งาน Component ตามที่เลือก */}
       {currentMode && (
         <div style={{ flex: 1 }}>
-          {currentMode === 'practice' && <PracticeMode />}
-          {currentMode === 'mock' && <MockExamMode />}
-          {currentMode === 'planner' && <StudyPlanner />}
+          {currentMode === 'practice' && (
+              <PracticeMode 
+                  userId={userId} 
+                  targetPartId={targetPracticeId} 
+                  onBackToPlanner={() => {
+                      setTargetPracticeId(null); 
+                      setCurrentMode('planner'); 
+                  }}
+              />
+          )}
+          
+          {currentMode === 'mock' && <MockExamMode userId={userId} />}  
+          
+          {currentMode === 'planner' && (
+             <StudyPlanner 
+                userId={userId}
+                onStartPractice={(partId) => {
+                   setTargetPracticeId(partId); 
+                   setCurrentMode('practice');
+                }} 
+             />
+          )}
+          
           {currentMode === 'admin' && <AdminAddQuestion />}
         </div>
       )}

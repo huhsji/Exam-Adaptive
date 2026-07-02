@@ -4,7 +4,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 export default function SkillRadarChart({ userId, category }) {
     const [data, setData] = useState([]);
 
-    // 🎯 1. กำหนดสีให้แตกต่างกันตามหมวดวิชา เพื่อความพรีเมียม
+    //  1. กำหนดสีให้แตกต่างกันตามหมวดวิชา เพื่อความพรีเมียม
     const getThemeColor = () => {
         if (category === 'วิชาภาษาอังกฤษ') return { main: '#3182CE', bg: '#EBF8FF' }; // สีฟ้า
         if (category === 'วิชาความรู้และลักษณะการเป็นข้าราชการที่ดี') return { main: '#D69E2E', bg: '#FEFCBF' }; // สีทอง

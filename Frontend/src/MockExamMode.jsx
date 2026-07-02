@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-export default function MockExamMode() {
+//  [แก้ไข 1] รับค่า userId ผ่าน props (แทนการพิมพ์เลข 1)
+export default function MockExamMode({ userId }) {
     const [step, setStep] = useState('start'); 
     const [questions, setQuestions] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -10,9 +11,9 @@ export default function MockExamMode() {
     const [sessionId, setSessionId] = useState(null);
     const [reviewFilter, setReviewFilter] = useState('all'); 
 
-    const userId = 1;
+    
 
-    // ⏱️ ระบบจับเวลาถอยหลัง (คงลอจิกเดิม)
+    // ⏱ ระบบจับเวลาถอยหลัง (คงลอจิกเดิม)
     useEffect(() => {
         let timerId;
         if (step === 'playing' && timeLeft > 0) {
@@ -38,7 +39,7 @@ export default function MockExamMode() {
             const res = await fetch(`http://localhost:5000/mock/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: userId })
+                body: JSON.stringify({ user_id: userId }) // 🟢 ใช้ userId ของจริงตรงนี้
             });
             
             const data = await res.json();
@@ -117,19 +118,17 @@ export default function MockExamMode() {
     // คำนวณ % ความคืบหน้าสำหรับ Progress Bar
     const progressPercentage = questions.length > 0 ? (Object.keys(answers).length / questions.length) * 100 : 0;
 
-    // ================= UI RENDERING (Official Theme) ================= //
+    // ================= UI RENDERING ================= //
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#F3F4F6', padding: '30px 20px', fontFamily: '"Kanit", sans-serif' }}>
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap');
                 * { box-sizing: border-box; }
                 
-                /* ปุ่มตัวเลือกข้อสอบ */
                 .option-card { transition: all 0.2s ease; border: 1px solid #D1D5DB; border-radius: 8px; cursor: pointer; background: #FFFFFF; display: flex; align-items: flex-start; padding: 16px 20px; }
                 .option-card:hover { border-color: #A0AEC0; background: #F8FAFC; }
                 .option-card.selected { border-color: #1A365D; background: #EBF4FF; box-shadow: 0 0 0 1px #1A365D; }
                 
-                /* แผงนำทาง (OMR Grid) */
                 .nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 380px; overflow-y: auto; padding-right: 5px; }
                 .btn-nav { width: 100%; aspect-ratio: 1; border-radius: 6px; border: 1px solid #D1D5DB; background: #FFFFFF; color: #4B5563; font-weight: 500; font-size: 13px; cursor: pointer; transition: all 0.15s; }
                 .btn-nav:hover { background: #E5E7EB; }
@@ -137,12 +136,10 @@ export default function MockExamMode() {
                 .btn-nav.current { box-shadow: 0 0 0 2px #1A365D; border-color: #1A365D; background: #FFFFFF; color: #1A365D; font-weight: 600; }
                 .btn-nav.answered.current { background: #1A365D; color: #FFFFFF; }
 
-                /* ปุ่มกรองเฉลย */
                 .filter-tab { padding: 10px 20px; border: 1px solid #D1D5DB; background: #FFFFFF; color: #4B5563; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
                 .filter-tab:hover { background: #F3F4F6; }
                 .filter-tab.active { background: #1A365D; color: #FFFFFF; border-color: #1A365D; }
                 
-                /* Scrollbar แต่งให้สวยงาม */
                 ::-webkit-scrollbar { width: 6px; }
                 ::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 4px; }
                 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
@@ -196,7 +193,6 @@ export default function MockExamMode() {
                         {/* ฝั่งซ้าย: กล่องโจทย์ข้อสอบ */}
                         <div style={{ flex: '1', width: '100%' }}>
                             
-                            {/* แถบ Progress Bar แบบมินิมอล */}
                             <div style={{ marginBottom: '20px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#6B7280', marginBottom: '8px', fontWeight: '500' }}>
                                     <span>ความคืบหน้า</span>
@@ -211,7 +207,6 @@ export default function MockExamMode() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid #F3F4F6', paddingBottom: '20px' }}>
                                     <h3 style={{ margin: 0, color: '#1A365D', fontSize: '20px', fontWeight: '500' }}>ข้อที่ {currentIndex + 1}</h3>
                                     
-                                    {/* กล่องจับเวลา */}
                                     <div style={{ display: 'flex', alignItems: 'center', background: '#F8FAFC', border: '1px solid #E2E8F0', color: timeLeft < 300 ? '#DC2626' : '#1E293B', padding: '8px 16px', borderRadius: '6px', fontWeight: '500', fontSize: '16px' }}>
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                         {formatTime(timeLeft)}
@@ -330,7 +325,7 @@ export default function MockExamMode() {
                     </div>
                 )}
 
-                {/*  หน้า 4: เฉลยละเอียด */}
+                {/* หน้า 4: เฉลยละเอียด */}
                 {step === 'review' && (
                     <div style={{ background: '#FFFFFF', padding: '40px', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                         

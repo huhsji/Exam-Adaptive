@@ -1,44 +1,169 @@
 import React, { useState, useEffect } from 'react';
 
-export default function PracticeMode() {
-    const [step, setStep] = useState('select_category'); 
+export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) { 
+    
+    // 🎯 1. อัปเกรด State ให้จำค่าจาก localStorage
+    const [step, setStep] = useState(() => {
+        return localStorage.getItem('practice_step') || 'select_category';
+    });
     
     const [categories, setCategories] = useState([]);
-    const [selectedCategory, setSelectedCategory] = useState(null);
-    const [parts, setParts] = useState([]);
-    const [selectedPart, setSelectedPart] = useState(null);
+    
+    const [selectedCategory, setSelectedCategory] = useState(() => {
+        const saved = localStorage.getItem('practice_category');
+        return saved ? JSON.parse(saved) : null;
+    });
 
-    const [sessionId, setSessionId] = useState(null);
+    const [parts, setParts] = useState([]);
+    
+    const [selectedPart, setSelectedPart] = useState(() => {
+        const saved = localStorage.getItem('practice_part');
+        return saved ? JSON.parse(saved) : null;
+    });
+
+    const [sessionId, setSessionId] = useState(() => {
+        const savedSession = localStorage.getItem('practice_session_id');
+        return savedSession ? parseInt(savedSession, 10) : null;
+    });
+
     const [questionData, setQuestionData] = useState(null);
     const [selectedAnswer, setSelectedAnswer] = useState('');
-    
-    // เก็บประวัติการตอบและเฉลยไว้โชว์ตอนจบ
     const [examHistory, setExamHistory] = useState([]); 
 
-    const userId = 1; // 💡 สมมติ userId ก่อน (เชื่อมระบบ Login จริงภายหลัง)
+    // 🎯 2. สั่งให้บันทึกค่าลงเบราว์เซอร์ทันทีที่ State เปลี่ยน
+    useEffect(() => {
+        localStorage.setItem('practice_step', step);
+    }, [step]);
 
+    useEffect(() => {
+        if (selectedCategory) localStorage.setItem('practice_category', JSON.stringify(selectedCategory));
+        else localStorage.removeItem('practice_category');
+    }, [selectedCategory]);
+
+    useEffect(() => {
+        if (selectedPart) localStorage.setItem('practice_part', JSON.stringify(selectedPart));
+        else localStorage.removeItem('practice_part');
+    }, [selectedPart]);
+    
+    useEffect(() => {
+        if (sessionId) localStorage.setItem('practice_session_id', sessionId);
+        else localStorage.removeItem('practice_session_id');
+    }, [sessionId]);
+
+    // 🎯 3. ดึงข้อมูลปุ่มพาร์ทวิชาตอนรีเฟรชหน้า select_part
+    useEffect(() => {
+        const fetchPartsOnRefresh = async () => {
+            if (step === 'select_part' && selectedCategory && parts.length === 0) {
+                try {
+                    const res = await fetch(`http://localhost:5000/api/practice/parts?category=${selectedCategory}`);
+                    const data = await res.json();
+                    setParts(data);
+                } catch (error) {
+                    console.error("Error fetching parts on refresh:", error);
+                }
+            }
+        };
+        fetchPartsOnRefresh();
+    }, [step, selectedCategory, parts.length]);
+
+    // 🎯 4. ดึงหมวดหมู่หลักตอนเริ่มต้น
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                // 💡 จุดที่แก้ไข 1: ส่ง userId ไปให้ API คำนวณ % ความคืบหน้าของคนนั้น
                 const res = await fetch(`http://localhost:5000/api/practice/categories?user_id=${userId}`);
                 const data = await res.json();
-                
-                // ตรวจสอบ Error จาก API ก่อน set state
-                if (res.ok) {
-                    setCategories(data);
-                } else {
-                    console.error("API Error:", data.error);
-                    // อาจจะเพิ่ม alert หรือระบบแจ้งเตือนกรณีข้อมูลมีปัญหา
-                }
-                
+                if (res.ok) setCategories(data);
             } catch (error) {
                 console.error("Error fetching categories:", error);
             }
         };
         fetchCategories();
-    }, [userId]); // เพิ่ม userId ใน dependency array
+    }, [userId]); 
 
+    // 🎯 5. ดักจับทางลัด (Bypass Logic) จาก Planner ให้ฉลาดขึ้น
+    useEffect(() => {
+        const bypassToTarget = async () => {
+            if (targetPartId) {
+                // ถ้าระบบจำได้อยู่แล้วว่ากำลังเล่นอยู่ หรืออยู่หน้าผลลัพธ์ ไม่ต้องรีเซ็ต!
+                if (step === 'playing' || step === 'summary') return;
+
+                try {
+                    const res = await fetch(`http://localhost:5000/api/practice/part-info?part_id=${targetPartId}`);
+                    const data = await res.json();
+                    if (res.ok && data) {
+                        setSelectedPart(data); 
+                        setStep('start');      
+                    }
+                } catch (error) {
+                    console.error("Error bypassing to target part:", error);
+                    setStep('select_category'); 
+                }
+            }
+        };
+        bypassToTarget();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [targetPartId]);
+
+    // 🎯 6. ฟังก์ชันเรียกข้อสอบ (บังคับรับค่า partId ตรงๆ กันพลาด)
+    const fetchQuestion = async (currentSessionId, currentPartId) => {
+        setSelectedAnswer(''); 
+        try {
+            const res = await fetch(`http://localhost:5000/api/practice/question?user_id=${userId}&part_id=${currentPartId}&session_id=${currentSessionId}`);
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert(` ${data.error || "ขออภัยครับ เกิดข้อผิดพลาดในการดึงข้อสอบ"}`);
+                setStep(targetPartId ? 'start' : 'select_category');
+                return; 
+            }
+
+            if (data.is_finished) {
+                setStep('summary'); 
+            } else {
+                setQuestionData(data);
+                setStep('playing');
+            }
+        } catch (error) {
+            console.error("Error fetching question:", error);
+            alert("ขัดข้อง! ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+            setStep('start');
+        }
+    };
+
+    // 🎯 7. กู้คืนข้อสอบ (รันครั้งเดียวตอนโหลด ป้องกัน Infinite Loop)
+    useEffect(() => {
+        if (step === 'playing' && !questionData) {
+            if (sessionId && selectedPart) {
+                fetchQuestion(sessionId, selectedPart.id);
+            } else {
+                // ถ้าค่าพังหรือหาย ให้บังคับกลับหน้าเลือกวิชา
+                handleExit();
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); 
+
+    // 🎯 8. เคลียร์ความจำเมื่อกดปุ่มออก
+    const handleExit = () => {
+        localStorage.removeItem('practice_session_id');
+        localStorage.removeItem('practice_step');
+        localStorage.removeItem('practice_category');
+        localStorage.removeItem('practice_part');
+        
+        setSessionId(null);
+        setSelectedPart(null);
+        setSelectedCategory(null);
+        setQuestionData(null);
+        setExamHistory([]);
+
+        if (targetPartId && onBackToPlanner) {
+            onBackToPlanner();
+        } else {
+            setStep('select_category');
+        }
+    };
+
+    // ---------------- EVENT HANDLERS ---------------- //
     const handleSelectCategory = async (categoryName) => {
         setSelectedCategory(categoryName);
         try {
@@ -68,34 +193,10 @@ export default function PracticeMode() {
             
             if (data.session_id) {
                 setSessionId(data.session_id);
-                fetchQuestion(data.session_id); 
+                fetchQuestion(data.session_id, selectedPart.id); 
             }
         } catch (error) {
             console.error("Error starting session:", error);
-        }
-    };
-
-    const fetchQuestion = async (currentSessionId) => {
-        setSelectedAnswer(''); 
-
-        try {
-            const res = await fetch(`http://localhost:5000/api/practice/question?user_id=${userId}&part_id=${selectedPart.id}&session_id=${currentSessionId}`);
-            const data = await res.json();
-
-            if (!res.ok) {
-                alert(`⚠️ ${data.error || "ขออภัยครับ ยังไม่มีข้อสอบในระบบสำหรับวิชานี้"}`);
-                setStep('select_part');
-                return; 
-            }
-
-            if (data.is_finished) {
-                setStep('summary'); 
-            } else {
-                setQuestionData(data);
-                setStep('playing');
-            }
-        } catch (error) {
-            console.error("Error fetching question:", error);
         }
     };
 
@@ -125,7 +226,7 @@ export default function PracticeMode() {
             if (feedbackData.is_finished) {
                 setStep('summary');
             } else {
-                fetchQuestion(sessionId);
+                fetchQuestion(sessionId, selectedPart.id);
             }
 
         } catch (error) {
@@ -133,7 +234,6 @@ export default function PracticeMode() {
         }
     };
 
-    // คำนวณ Progress สำหรับหลอดคะแนนโหมดฝึกซ้อม
     const currentProgress = questionData ? ((questionData.question_number - 1) / 20) * 100 : 0;
 
     // ================= UI RENDERING ================= //
@@ -159,7 +259,7 @@ export default function PracticeMode() {
 
             <div className="main-container slide-up">
                 
-                {/* 📍 หน้า 1: เลือกหมวดวิชาหลัก (อัปเดตเพิ่ม UI โชว์เปอร์เซ็นต์) */}
+                {/* 📍 หน้า 1: เลือกหมวดวิชาหลัก */}
                 {step === 'select_category' && (
                     <div className="fade-in">
                         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -172,9 +272,7 @@ export default function PracticeMode() {
                             <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>กำลังโหลดข้อมูล...</div>
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
-                                {/* 💡 จุดที่แก้ไข 2: นำข้อมูล % มาแสดงผล */}
                                 {categories.map((category, index) => {
-                                    // เช็กว่าคะแนนเกินเกณฑ์ผ่านที่ ก.พ. กำหนดไว้หรือไม่
                                     const isPassed = category.percentage >= category.passing_criteria;
                                     
                                     return (
@@ -189,13 +287,12 @@ export default function PracticeMode() {
                                                 <div style={{ flex: 1, paddingRight: '20px' }}>
                                                     <h3 style={{ margin: '0 0 8px 0', color: '#1F2937', fontSize: '18px', fontWeight: '500' }}>{category.name}</h3>
                                                     
-                                                    {/* หลอดเปอร์เซ็นต์ความพร้อม (Readiness Progress Bar) */}
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <div style={{ flex: 1, height: '6px', background: '#E5E7EB', borderRadius: '3px', overflow: 'hidden' }}>
                                                             <div style={{ 
-                                                                width: `${Math.min(category.percentage, 100)}%`, // กันเปอร์เซ็นต์ทะลุ 100 
+                                                                width: `${Math.min(category.percentage, 100)}%`,
                                                                 height: '100%', 
-                                                                background: isPassed ? '#10B981' : '#F59E0B', // ผ่าน = สีเขียว, ไม่ผ่าน = สีส้ม
+                                                                background: isPassed ? '#10B981' : '#F59E0B', 
                                                                 transition: 'width 0.5s ease-in-out' 
                                                             }}></div>
                                                         </div>
@@ -266,9 +363,15 @@ export default function PracticeMode() {
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
-                            <button onClick={() => setStep('select_part')} style={{ padding: '12px 25px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
-                                กลับไปเลือกวิชา
-                            </button>
+                            {targetPartId ? (
+                                <button onClick={handleExit} style={{ padding: '12px 25px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
+                                    กลับไปหน้าตาราง
+                                </button>
+                            ) : (
+                                <button onClick={() => setStep('select_part')} style={{ padding: '12px 25px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
+                                    กลับไปเลือกวิชา
+                                </button>
+                            )}
                             <button onClick={startSession} style={{ padding: '12px 35px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s', display: 'flex', alignItems: 'center' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
                                 เริ่มทำข้อสอบ
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '8px' }}><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
@@ -288,7 +391,6 @@ export default function PracticeMode() {
                             </div>
                         ) : (
                             <>
-                                {/* แถบความคืบหน้า (Progress Bar) */}
                                 <div style={{ marginBottom: '25px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#4B5563', marginBottom: '8px', fontWeight: '500' }}>
                                         <span>โหมดฝึกซ้อม</span>
@@ -333,7 +435,6 @@ export default function PracticeMode() {
                 {/* 📍 หน้า 5: หน้าสรุปผล */}
                 {step === 'summary' && (
                     <div className="fade-in" style={{ textAlign: 'center', padding: '30px 0' }}>
-                        {/* โชว์ไอคอนและสีตามสถานะ ผ่าน/ไม่ผ่าน */}
                         {examHistory[examHistory.length - 1]?.feedback?.summary?.is_passed ? (
                             <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '15px' }}>
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -365,17 +466,16 @@ export default function PracticeMode() {
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
-                            <button onClick={() => { 
-                                setStep('select_category'); 
-                                setSelectedCategory(null); 
-                                setSelectedPart(null); 
-                                // เพิ่มการ fetch ข้อมูลเปอร์เซ็นต์ใหม่ เมื่อกลับหน้าหลัก
-                                fetch(`http://localhost:5000/api/practice/categories?user_id=${userId}`)
-                                    .then(res => res.json())
-                                    .then(data => setCategories(data));
-                            }} style={{ flex: 1, padding: '12px 20px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
-                                กลับหน้าหลัก
-                            </button>
+                            {targetPartId ? (
+                                <button onClick={handleExit} style={{ flex: 1, padding: '12px 20px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
+                                    กลับไปหน้าตาราง
+                                </button>
+                            ) : (
+                                <button onClick={handleExit} style={{ flex: 1, padding: '12px 20px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
+                                    กลับหน้าหลัก
+                                </button>
+                            )}
+
                             <button onClick={() => setStep('review')} style={{ flex: 2, padding: '12px 20px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
                                 ตรวจสอบเฉลย
                             </button>

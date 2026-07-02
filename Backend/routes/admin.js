@@ -161,7 +161,7 @@ router.post('/api/admin/upload-excel', uploadExcel.single('excel_file'), async (
 
         res.status(200).json({ 
             success: true, 
-            message: `นำเข้าข้อสอบสำเร็จทั้งหมด ${successCount} ข้อ!` 
+            message: `นำเข้าข้อสอบสำเร็จทั้งหมด ${successCount} ข้อ` 
         });
 
     } catch (error) {

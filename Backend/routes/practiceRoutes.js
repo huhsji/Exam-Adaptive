@@ -51,7 +51,7 @@
 
                 } else if (row.category === 'วิชาความรู้ความสามารถในการคิดวิเคราะห์') {
                     // คิดวิเคราะห์: ป.โท 65% / ส่วน ปวช, ปวส, ป.ตรี คือ 60% 
-                    if (userEdu === 'ปริญญาโท') {
+                    if (userEdu === 'ป.โท') {
                         passingCriteria = 65;
                     } else {
                         passingCriteria = 60;
@@ -323,4 +323,30 @@
             res.status(500).json({ error: "เซิร์ฟเวอร์มีปัญหาในการดึงข้อมูลกราฟ" });
         }
     });
+
+    //  API สำหรับดึงข้อมูล Part เดียว (ใช้ตอนโดดข้ามมาจากตาราง Planner)
+router.get('/part-info', async (req, res) => {
+    try {
+        const { part_id } = req.query;
+        if (!part_id) return res.status(400).json({ error: "Missing part_id" });
+
+        const [parts] = await db.query(`
+            SELECT id, category, part_name 
+            FROM parts 
+            WHERE id = ?
+        `, [part_id]);
+
+        if (parts.length === 0) {
+            return res.status(404).json({ error: "ไม่พบรายวิชานี้" });
+        }
+
+        res.json(parts[0]);
+    } catch (error) {
+        console.error("Error fetching part info:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+module.exports = router; // ต้องอยู่ล่างสุดเสมอ
+
     module.exports = router;
