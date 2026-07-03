@@ -2,18 +2,18 @@ const db = require('./db');
 
 async function initializeDatabase() {
     try {
-        console.log("⏳ กำลังเตรียมล้างตารางและสร้างฐานข้อมูลใหม่ตาม DBML...");
+        console.log(" กำลังเตรียมล้างตารางและสร้างฐานข้อมูลใหม่ตาม DBML...");
 
-        // ⚠️ ลบฐานข้อมูลเดิมทิ้งเพื่อเคลียร์โครงสร้างเก่าให้เป็น 0
+        //  ลบฐานข้อมูลเดิมทิ้งเพื่อเคลียร์โครงสร้างเก่าให้เป็น 0
         await db.query(`DROP DATABASE IF EXISTS adaptive_exam_db`);
         
         // สร้างและเลือกฐานข้อมูลใหม่
         await db.query(`CREATE DATABASE adaptive_exam_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
         await db.query(`USE adaptive_exam_db`);
 
-        // ==========================================
-        // 🗂️ 1. กลุ่มตารางหลักของระบบ (Parent Tables)
-        // ==========================================
+       
+        //  1. กลุ่มตารางหลักของระบบ (Parent Tables)
+        
 
         // 1. ตาราง users
         const createUsers = `
@@ -36,9 +36,8 @@ async function initializeDatabase() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `;
 
-        // ==========================================
-        // 🏃‍♂️ 2. กลุ่มระบบการสอบ (Examination)
-        // ==========================================
+    
+        
 
         // 3. ตาราง questions
         const createQuestions = `
@@ -85,9 +84,7 @@ async function initializeDatabase() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `;
 
-        // ==========================================
-        // 🎯 3. ระบบความเก่งและแผนปฏิทิน (Adaptive & Planner)
-        // ==========================================
+       
 
         // 6. ตาราง user_skills
         const createUserSkills = `
@@ -117,33 +114,33 @@ async function initializeDatabase() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `;
 
-        // --- รันคำสั่ง SQL สร้างทีละตารางให้ถูกต้องตามลำดับ (เพื่อไม่ให้ติด Error FK) ---
+        // รัคำสั่ง SQL สร้างทีละตารางให้ถูกต้องตามลำดับ (
         await db.query(createUsers);
-        console.log("✅ 1/7 สร้างตาราง users");
+        console.log(" 1/7 สร้างตาราง users");
 
         await db.query(createParts);
-        console.log("✅ 2/7 สร้างตาราง parts");
+        console.log("2/7 สร้างตาราง parts");
 
         await db.query(createQuestions);
-        console.log("✅ 3/7 สร้างตาราง questions");
+        console.log(" 3/7 สร้างตาราง questions");
 
         await db.query(createExamSessions);
-        console.log("✅ 4/7 สร้างตาราง exam_sessions");
+        console.log(" 4/7 สร้างตาราง exam_sessions");
 
         await db.query(createUserAnswers);
-        console.log("✅ 5/7 สร้างตาราง user_answers");
+        console.log(" 5/7 สร้างตาราง user_answers");
 
         await db.query(createUserSkills);
-        console.log("✅ 6/7 สร้างตาราง user_skills");
+        console.log(" 6/7 สร้างตาราง user_skills");
 
         await db.query(createStudyPlanners);
-        console.log("✅ 7/7 สร้างตาราง study_planners");
+        console.log(" 7/7 สร้างตาราง study_planners");
 
-        console.log("🎉 ล้างและสร้างตารางฐานข้อมูลเสร็จสมบูรณ์! พร้อม Import CSV แล้วครับ");
+        console.log(" ล้างและสร้างตารางฐานข้อมูลเสร็จสมบูรณ์! พร้อม Import CSV แล้วครับ");
         process.exit(0);
 
     } catch (error) {
-        console.error("❌ เกิดข้อผิดพลาด:", error);
+        console.error(" เกิดข้อผิดพลาด:", error);
         process.exit(1);
     }
 }

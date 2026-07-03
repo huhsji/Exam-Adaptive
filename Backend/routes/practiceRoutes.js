@@ -3,7 +3,7 @@
     const db = require('../db');
 
 
-    //  API ดึงรายชื่อหมวดวิชาหลัก (Categories)
+  
     //  API ดึงรายชื่อหมวดวิชาหลัก พร้อมคำนวณ % ความคืบหน้าของผู้ใช้
     router.get('/categories', async (req, res) => {
         try {

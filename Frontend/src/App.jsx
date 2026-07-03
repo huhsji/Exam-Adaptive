@@ -7,7 +7,7 @@ import StudyPlanner from './StudyPlanner';
 import AuthPage from './AuthPage';
 
 function App() {
-  //  1. ดึงข้อมูลจาก localStorage มาตั้งเป็นค่าเริ่มต้น
+  // 1. ดึงข้อมูลจาก localStorage มาตั้งเป็นค่าเริ่มต้น
   const [currentUser, setCurrentUser] = useState(() => {
       const savedUser = localStorage.getItem('currentUser');
       return savedUser ? JSON.parse(savedUser) : null;
@@ -22,7 +22,7 @@ function App() {
       return savedId ? parseInt(savedId, 10) : null;
   });
 
-  //  2. สร้าง useEffect เพื่อเซฟข้อมูลลงเครื่องอัตโนมัติ ทุกครั้งที่มีการเปลี่ยน State
+  // 2. สร้าง useEffect เพื่อเซฟข้อมูลลงเครื่องอัตโนมัติ ทุกครั้งที่มีการเปลี่ยน State
   useEffect(() => {
       if (currentUser) localStorage.setItem('currentUser', JSON.stringify(currentUser));
       else localStorage.removeItem('currentUser');
@@ -38,41 +38,48 @@ function App() {
       else localStorage.removeItem('targetPracticeId');
   }, [targetPracticeId]);
 
-
-  // 🎯 ถ้ายังไม่ล็อกอิน ให้แสดงหน้า AuthPage
+  //  ถ้ายังไม่ล็อกอิน ให้แสดงหน้า AuthPage
   if (!currentUser) {
       return <AuthPage onLoginSuccess={(userData) => setCurrentUser(userData)} />;
   }
 
-  // ดึง userId ออกมาจากข้อมูลคนที่ล็อกอิน
+  // ดึง userId และ role ออกมาจากข้อมูลคนที่ล็อกอิน
   const userId = currentUser.id;
+  const userRole = currentUser.role || 'user'; // ถ้าไม่มีค่า ให้มองเป็น 'user' ทั่วไปไว้ก่อน
+
+  //  [Route Guard] ดักจับความปลอดภัย: ถ้าพยายามเข้าหน้า admin แต่ยศไม่ใช่ admin ให้ดีดออกทันที
+  if (currentMode === 'admin' && userRole !== 'admin') {
+      alert(' คุณไม่มีสิทธิ์เข้าถึงหน้านี้ เฉพาะผู้ดูแลระบบเท่านั้นครับ');
+      setCurrentMode(null);
+  }
 
   const handleLogout = () => {
       const confirmLogout = window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?');
       if (confirmLogout) {
           setCurrentUser(null);
           setCurrentMode(null);
-          setTargetPracticeId(null); // ล้างพาร์ทที่ค้างไว้ด้วย
+          setTargetPracticeId(null);
       }
   };
 
   const handleBackToMain = () => {
-    // ล้างค่าโหมดฝึกทำเมื่อกดกลับ
+    // ล้างค่าโหมดฝึกทำเมื่อกดกลับ (แต่ยังคง session ที่ค้างไว้ใน localStorage ตามที่เราทำกันไว้ก่อนหน้านี้)
     localStorage.removeItem('practice_step');
     localStorage.removeItem('practice_category');
     localStorage.removeItem('practice_part');
-    localStorage.removeItem('practice_session_id');
-    localStorage.removeItem('practice_part_id');
+    
+    // สั่งล้างค่าทางลัดตาราง Planner ทั้งหมด ป้องกันการข้ามหน้าจอโดยไม่ตั้งใจ
+    setTargetPracticeId(null);
+    localStorage.removeItem('targetPracticeId');
     
     setCurrentMode(null);
-};
+  };
 
   return (
     <div style={{ fontFamily: '"Kanit", sans-serif', backgroundColor: '#F3F4F6', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap');
         
-        /* ลบขอบขาวเริ่มต้นของ Browser ทิ้งให้กางเต็มจอ 100% */
         html, body {
             margin: 0;
             padding: 0;
@@ -80,7 +87,6 @@ function App() {
             height: 100%;
         }
 
-        /* อัปเกรด Navbar ให้ดูพรีเมียม */
         .nav-header { 
             background: linear-gradient(90deg, #1A365D 0%, #2A4365 100%); 
             border-bottom: 3px solid #D69E2E;
@@ -107,15 +113,13 @@ function App() {
         .menu-card { background: #FFFFFF; padding: 40px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); cursor: pointer; width: 300px; transition: all 0.3s ease; border-top: 4px solid transparent; display: flex; flex-direction: column; align-items: center; text-align: center; }
         .menu-card:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
         
-        /* สีของขอบบนการ์ดเวลา Hover */
         .card-practice:hover { border-top-color: #3182CE; }
         .card-mock:hover { border-top-color: #D69E2E; }
-        .card-planner:hover { border-top-color: #10B981; } /* สีเขียวสำหรับ Planner */
+        .card-planner:hover { border-top-color: #10B981; } 
         
         .card-admin { background: #F8FAFC; border: 1px dashed #CBD5E1; border-top: none; }
         .card-admin:hover { border-color: #94A3B8; background: #F1F5F9; border-top: none; transform: translateY(-4px); }
 
-        /* อัปเกรดปุ่มย้อนกลับ */
         .btn-back { 
             background: rgba(255,255,255,0.05); 
             color: white; 
@@ -131,7 +135,6 @@ function App() {
             color: #D69E2E; 
         }
 
-        /* ปุ่มออกจากระบบ */
         .btn-logout {
             background: transparent;
             color: #E2E8F0;
@@ -165,10 +168,15 @@ function App() {
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* แสดงชื่อคนล็อกอิน */}
+            {/* แสดงชื่อและยศของคนล็อกอิน */}
             {!currentMode && (
                 <span style={{ fontSize: '14px', color: '#CBD5E1' }}>
                     ยินดีต้อนรับ, <strong>{currentUser.name}</strong>
+                    {userRole === 'admin' && (
+                        <span style={{ background: '#D69E2E', color: '#1A365D', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '12px', marginLeft: '8px' }}>
+                            ADMIN
+                        </span>
+                    )}
                 </span>
             )}
 
@@ -213,7 +221,7 @@ function App() {
               <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>ทำข้อสอบชุดใหญ่ 100 ข้อ จับเวลา 3 ชั่วโมง เหมือนลงสนามสอบจริง</p>
             </div>
 
-            {/*  เพิ่มกล่องเมนู Planner ตรงนี้ */}
+            {/* กล่องเมนู Planner */}
             <div className="menu-card card-planner" onClick={() => setCurrentMode('planner')}>
               <div style={{ background: '#F0FDF4', padding: '16px', borderRadius: '50%', marginBottom: '20px' }}>
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -222,14 +230,16 @@ function App() {
               <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>วิเคราะห์จุดอ่อนและจัดตารางติวให้อัตโนมัติ พร้อมนับถอยหลังสู่วันสอบ</p>
             </div>
 
-            {/* กล่องจัดการข้อสอบ (Admin) */}
-            <div className="menu-card card-admin" onClick={() => setCurrentMode('admin')}>
-              <div style={{ background: '#E2E8F0', padding: '16px', borderRadius: '50%', marginBottom: '20px' }}>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-              </div>
-              <h2 style={{ color: '#475569', margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600' }}>จัดการข้อสอบ (Admin)</h2>
-              <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>เพิ่มและแก้ไขข้อสอบ อัปโหลดรูปภาพโจทย์และตัวเลือกเข้าสู่ฐานข้อมูล</p>
-            </div>
+            {/*  [เงื่อนไข] แสดงกล่องจัดการข้อสอบ (Admin) ก็ต่อเมื่อเป็นยศ 'admin' เท่านั้น */}
+            {userRole === 'admin' && (
+                <div className="menu-card card-admin" onClick={() => setCurrentMode('admin')}>
+                  <div style={{ background: '#E2E8F0', padding: '16px', borderRadius: '50%', marginBottom: '20px' }}>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                  </div>
+                  <h2 style={{ color: '#475569', margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600' }}>จัดการข้อสอบ (Admin)</h2>
+                  <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>เพิ่มและแก้ไขข้อสอบ อัปโหลดรูปภาพโจทย์และตัวเลือกเข้าสู่ฐานข้อมูล</p>
+                </div>
+            )}
 
           </div>
 
@@ -238,7 +248,7 @@ function App() {
         </div>
       )}
 
-      {/*  เรียกใช้งาน Component ตามที่เลือก */}
+      {/* เรียกใช้งาน Component ตามที่เลือก */}
       {currentMode && (
         <div style={{ flex: 1 }}>
           {currentMode === 'practice' && (
@@ -264,7 +274,8 @@ function App() {
              />
           )}
           
-          {currentMode === 'admin' && <AdminAddQuestion />}
+          {/*  [Route Render] อนุญาตให้เรนเดอร์หน้า Admin ก็ต่อเมื่อยศเป็น admin */}
+          {currentMode === 'admin' && userRole === 'admin' && <AdminAddQuestion />}
         </div>
       )}
 

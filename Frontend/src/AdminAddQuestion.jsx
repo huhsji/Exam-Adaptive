@@ -109,7 +109,7 @@ function AdminAddQuestion() {
         }
     };
 
-    // ================= UI RENDERING ================= //
+    
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#F3F4F6', padding: '40px 20px', fontFamily: '"Kanit", sans-serif' }}>
             <style>{`
@@ -144,7 +144,7 @@ function AdminAddQuestion() {
                     </div>
                 </div>
                 
-                {/* 🌟 กล่องอัพโหลด Excel 🌟 */}
+                {/*  กล่องอัพโหลด Excel  */}
                 <div className="admin-card" style={{ borderTop: '4px solid #10B981', marginBottom: '30px' }}>
                     <div className="admin-card-header" style={{ color: '#059669', borderBottom: 'none', paddingBottom: 0, marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -264,7 +264,7 @@ function AdminAddQuestion() {
                     <div style={{ flex: 1, height: '1px', background: '#D1D5DB' }}></div>
                 </div>
 
-                {/* 🌟 ฟอร์มกรอกทีละข้อ 🌟 */}
+                {/*  ฟอร์มกรอกทีละข้อ  */}
                 <form onSubmit={handleSubmit}>
                     
                     {/* --- ส่วนตั้งค่าโจทย์ --- */}

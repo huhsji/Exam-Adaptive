@@ -27,7 +27,7 @@ export default function SkillRadarChart({ userId, category }) {
         if (userId && category) fetchRadarData();
     }, [userId, category]);
 
-    // 🎯 2. ฟังก์ชันตัดคำยาวๆ ให้สั้นลง ป้องกันข้อความชนกัน
+    //  2. ฟังก์ชันตัดคำยาวๆ ให้สั้นลง ป้องกันข้อความชนกัน
     const formatLabel = (name) => {
         if (!name) return '';
         // ตัดคำว่า "การ" หรือ "วิเคราะห์" ออกในบางพาร์ทที่ยาวเกิน
@@ -59,7 +59,7 @@ export default function SkillRadarChart({ userId, category }) {
         onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
             
-            {/* 🎯 3. สร้างแถบ Header สีสันสวยงามแยกตามวิชา */}
+            {/*  3. สร้างแถบ Header สีสันสวยงามแยกตามวิชา */}
             <div style={{ 
                 background: theme.bg, 
                 borderBottom: `2px solid ${theme.main}`,

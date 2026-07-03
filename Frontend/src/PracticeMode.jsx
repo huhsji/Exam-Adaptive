@@ -1,36 +1,43 @@
 import React, { useState, useEffect } from 'react';
 
 export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) { 
-    
-    // 🎯 1. อัปเกรด State ให้จำค่าจาก localStorage
     const [step, setStep] = useState(() => {
         return localStorage.getItem('practice_step') || 'select_category';
     });
     
     const [categories, setCategories] = useState([]);
-    
     const [selectedCategory, setSelectedCategory] = useState(() => {
         const saved = localStorage.getItem('practice_category');
         return saved ? JSON.parse(saved) : null;
     });
 
     const [parts, setParts] = useState([]);
-    
     const [selectedPart, setSelectedPart] = useState(() => {
         const saved = localStorage.getItem('practice_part');
         return saved ? JSON.parse(saved) : null;
     });
 
-    const [sessionId, setSessionId] = useState(() => {
-        const savedSession = localStorage.getItem('practice_session_id');
-        return savedSession ? parseInt(savedSession, 10) : null;
+    // เก็บข้อมูล Session และ Part ID ที่ค้างอยู่จริงในระบบ
+    const [activeSessionId, setActiveSessionId] = useState(() => {
+        const saved = localStorage.getItem('practice_active_session_id');
+        return saved ? parseInt(saved, 10) : null;
     });
+    
+    const [activePartId, setActivePartId] = useState(() => {
+        const saved = localStorage.getItem('practice_active_part_id');
+        return saved ? parseInt(saved, 10) : null;
+    });
+
+    // State สำหรับเปิด/ปิดหน้าต่าง Popup เมื่อกดปุ่ม "เริ่มทำข้อสอบ"
+    const [showResumeModal, setShowResumeModal] = useState(false);
 
     const [questionData, setQuestionData] = useState(null);
     const [selectedAnswer, setSelectedAnswer] = useState('');
     const [examHistory, setExamHistory] = useState([]); 
 
-    // 🎯 2. สั่งให้บันทึกค่าลงเบราว์เซอร์ทันทีที่ State เปลี่ยน
+    const [reviewPage, setReviewPage] = useState(1);
+    const itemsPerPage = 10;
+
     useEffect(() => {
         localStorage.setItem('practice_step', step);
     }, [step]);
@@ -46,11 +53,15 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
     }, [selectedPart]);
     
     useEffect(() => {
-        if (sessionId) localStorage.setItem('practice_session_id', sessionId);
-        else localStorage.removeItem('practice_session_id');
-    }, [sessionId]);
+        if (activeSessionId) localStorage.setItem('practice_active_session_id', activeSessionId);
+        else localStorage.removeItem('practice_active_session_id');
+    }, [activeSessionId]);
 
-    // 🎯 3. ดึงข้อมูลปุ่มพาร์ทวิชาตอนรีเฟรชหน้า select_part
+    useEffect(() => {
+        if (activePartId) localStorage.setItem('practice_active_part_id', activePartId);
+        else localStorage.removeItem('practice_active_part_id');
+    }, [activePartId]);
+
     useEffect(() => {
         const fetchPartsOnRefresh = async () => {
             if (step === 'select_part' && selectedCategory && parts.length === 0) {
@@ -66,7 +77,6 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         fetchPartsOnRefresh();
     }, [step, selectedCategory, parts.length]);
 
-    // 🎯 4. ดึงหมวดหมู่หลักตอนเริ่มต้น
     useEffect(() => {
         const fetchCategories = async () => {
             try {
@@ -80,19 +90,16 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         fetchCategories();
     }, [userId]); 
 
-    // 🎯 5. ดักจับทางลัด (Bypass Logic) จาก Planner ให้ฉลาดขึ้น
     useEffect(() => {
         const bypassToTarget = async () => {
             if (targetPartId) {
-                // ถ้าระบบจำได้อยู่แล้วว่ากำลังเล่นอยู่ หรืออยู่หน้าผลลัพธ์ ไม่ต้องรีเซ็ต!
                 if (step === 'playing' || step === 'summary') return;
-
                 try {
                     const res = await fetch(`http://localhost:5000/api/practice/part-info?part_id=${targetPartId}`);
                     const data = await res.json();
                     if (res.ok && data) {
                         setSelectedPart(data); 
-                        setStep('start');      
+                        setStep('start');
                     }
                 } catch (error) {
                     console.error("Error bypassing to target part:", error);
@@ -101,10 +108,8 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
             }
         };
         bypassToTarget();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [targetPartId]);
+    }, [targetPartId, step]);
 
-    // 🎯 6. ฟังก์ชันเรียกข้อสอบ (บังคับรับค่า partId ตรงๆ กันพลาด)
     const fetchQuestion = async (currentSessionId, currentPartId) => {
         setSelectedAnswer(''); 
         try {
@@ -112,12 +117,14 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
             const data = await res.json();
 
             if (!res.ok) {
-                alert(` ${data.error || "ขออภัยครับ เกิดข้อผิดพลาดในการดึงข้อสอบ"}`);
-                setStep(targetPartId ? 'start' : 'select_category');
+                alert(` ${data.error || "ขออภัยครับ เกิดข้อผิดพลาดในการดึงข้อมูลข้อสอบ"}`);
+                setStep('start');
                 return; 
             }
 
             if (data.is_finished) {
+                setActiveSessionId(null);
+                setActivePartId(null);
                 setStep('summary'); 
             } else {
                 setQuestionData(data);
@@ -125,36 +132,32 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
             }
         } catch (error) {
             console.error("Error fetching question:", error);
-            alert("ขัดข้อง! ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+            alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง");
             setStep('start');
         }
     };
 
-    // 🎯 7. กู้คืนข้อสอบ (รันครั้งเดียวตอนโหลด ป้องกัน Infinite Loop)
     useEffect(() => {
         if (step === 'playing' && !questionData) {
-            if (sessionId && selectedPart) {
-                fetchQuestion(sessionId, selectedPart.id);
+            if (activeSessionId && selectedPart) {
+                fetchQuestion(activeSessionId, selectedPart.id);
             } else {
-                // ถ้าค่าพังหรือหาย ให้บังคับกลับหน้าเลือกวิชา
                 handleExit();
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); 
+    }, [step, questionData, activeSessionId, selectedPart]); 
 
-    // 🎯 8. เคลียร์ความจำเมื่อกดปุ่มออก
     const handleExit = () => {
-        localStorage.removeItem('practice_session_id');
         localStorage.removeItem('practice_step');
         localStorage.removeItem('practice_category');
         localStorage.removeItem('practice_part');
         
-        setSessionId(null);
         setSelectedPart(null);
         setSelectedCategory(null);
         setQuestionData(null);
         setExamHistory([]);
+        setReviewPage(1);
+        setShowResumeModal(false);
 
         if (targetPartId && onBackToPlanner) {
             onBackToPlanner();
@@ -163,7 +166,6 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         }
     };
 
-    // ---------------- EVENT HANDLERS ---------------- //
     const handleSelectCategory = async (categoryName) => {
         setSelectedCategory(categoryName);
         try {
@@ -181,7 +183,9 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         setStep('start');
     };
 
-    const startSession = async () => {
+    //  ฟังก์ชันสำหรับเริ่มรอบการทดสอบใหม่ (New Session)
+    const startNewSession = async () => {
+        setShowResumeModal(false);
         try {
             setExamHistory([]); 
             const res = await fetch('http://localhost:5000/api/practice/start', {
@@ -192,7 +196,8 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
             const data = await res.json();
             
             if (data.session_id) {
-                setSessionId(data.session_id);
+                setActiveSessionId(data.session_id);
+                setActivePartId(selectedPart.id);
                 fetchQuestion(data.session_id, selectedPart.id); 
             }
         } catch (error) {
@@ -200,8 +205,25 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         }
     };
 
+    //  ฟังก์ชันจัดการเมื่อผู้ใช้กดปุ่ม "เริ่มทำข้อสอบ" ในหน้าเตรียมสอบ
+    const handleStartButtonPress = () => {
+        // หากพบรหัส Session ของวิชาเดิมที่ค้างอยู่ ให้เปิดหน้าต่าง Modal เพื่อสอบถาม
+        if (activeSessionId && activePartId === selectedPart?.id) {
+            setShowResumeModal(true);
+        } else {
+            // หากไม่มีข้อมูลค้าง ให้เริ่มการทดสอบใหม่ทันที
+            startNewSession();
+        }
+    };
+
+    // ฟังก์ชันทำต่อจากรอบเดิมที่ค้างไว้
+    const handleResume = () => {
+        setShowResumeModal(false);
+        fetchQuestion(activeSessionId, selectedPart.id);
+    };
+
     const submitAnswer = async () => {
-        if (!selectedAnswer) return alert("กรุณาเลือกคำตอบก่อนครับ!");
+        if (!selectedAnswer) return alert("กรุณาเลือกคำตอบก่อนดำเนินการต่อครับ");
 
         try {
             const res = await fetch('http://localhost:5000/api/practice/submit', {
@@ -209,7 +231,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: userId,
-                    session_id: sessionId,
+                    session_id: activeSessionId,
                     question_id: questionData.question.id,
                     part_id: selectedPart.id, 
                     user_answer: selectedAnswer
@@ -224,9 +246,11 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
             }]);
 
             if (feedbackData.is_finished) {
+                setActiveSessionId(null);
+                setActivePartId(null);
                 setStep('summary');
             } else {
-                fetchQuestion(sessionId, selectedPart.id);
+                fetchQuestion(activeSessionId, selectedPart.id);
             }
 
         } catch (error) {
@@ -235,10 +259,11 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
     };
 
     const currentProgress = questionData ? ((questionData.question_number - 1) / 20) * 100 : 0;
+    const totalReviewPages = Math.ceil(examHistory.length / itemsPerPage);
+    const currentReviewItems = examHistory.slice((reviewPage - 1) * itemsPerPage, reviewPage * itemsPerPage);
 
-    // ================= UI RENDERING ================= //
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#F3F4F6', padding: '30px 20px', fontFamily: '"Kanit", sans-serif' }}>
+        <div style={{ minHeight: '100vh', backgroundColor: '#F3F4F6', padding: '30px 20px', fontFamily: '"Kanit", sans-serif', position: 'relative' }}>
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap');
                 * { box-sizing: border-box; }
@@ -255,11 +280,61 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                 .option-card.selected { border-color: #1A365D; background: #EBF4FF; box-shadow: 0 0 0 1px #1A365D; }
                 
                 .main-container { max-width: 750px; margin: 0 auto; background: #FFFFFF; padding: 40px; border-radius: 8px; border-top: 6px solid #1A365D; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+                
+                .page-btn { padding: 6px 12px; border: 1px solid #D1D5DB; background: #FFF; color: #4B5563; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.15s; }
+                .page-btn:hover:not(:disabled) { background: #F3F4F6; border-color: #CBD5E1; }
+                .page-btn.active { background: #1A365D; color: #FFF; border-color: #1A365D; }
+                .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+                /* สไตล์สำหรับหน้าต่าง Popup (Formal Style) */
+                .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; animation: fadeIn 0.2s ease; }
+                .modal-box { background: white; padding: 36px 32px; border-radius: 12px; max-width: 440px; width: 90%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25); animation: slideUp 0.3s ease; border-top: 5px solid #D69E2E; }
             `}</style>
+
+            {/*  หน้าต่างแจ้งเตือนอย่างเป็นทางการ เมื่อกด "เริ่มทำข้อสอบ" แล้วพบข้อมูลค้าง 🌟 */}
+            {showResumeModal && (
+    <div className="modal-overlay">
+        <div className="modal-box" style={{ position: 'relative' }}>
+            {/*  [เพิ่ม] ปุ่มกากบาทมุมขวาบน */}
+            <button 
+                onClick={() => setShowResumeModal(false)} 
+                style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', fontSize: '24px', color: '#94A3B8', cursor: 'pointer', fontWeight: '300', transition: 'color 0.2s' }}
+                onMouseOver={(e) => e.target.style.color = '#1A365D'}
+                onMouseOut={(e) => e.target.style.color = '#94A3B8'}
+            >
+                &times;
+            </button>
+
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px auto' }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            
+            <h3 style={{ margin: '0 0 12px 0', color: '#1A365D', fontSize: '22px', fontWeight: '600' }}>
+                ตรวจพบการทดสอบที่ค้างอยู่
+            </h3>
+            
+            <p style={{ color: '#4B5563', fontSize: '15px', lineHeight: '1.6', margin: '0 0 28px 0' }}>
+                ระบบตรวจพบว่าคุณมีรอบการทดสอบของวิชา <strong>"{selectedPart?.part_name}"</strong> ที่ยังดำเนินการไม่เสร็จสิ้น คุณต้องการทำต่อจากข้อเดิมหรือเริ่มต้นรอบการทดสอบใหม่ครับ?
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* ปุ่มหลัก: ดำเนินการต่อ */}
+                <button onClick={handleResume} style={{ padding: '13px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', cursor: 'pointer', boxShadow: '0 4px 6px rgba(26, 54, 93, 0.18)', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                    ดำเนินการต่อจากรอบเดิม
+                </button>
+                
+                {/* ปุ่มรอง: เริ่มต้นใหม่ */}
+                <button onClick={startNewSession} style={{ padding: '12px', background: 'white', color: '#64748B', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.target.style.background = '#F8FAFC'; e.target.style.color = '#1E293B'; e.target.style.borderColor = '#94A3B8'; }} onMouseOut={(e) => { e.target.style.background = 'white'; e.target.style.color = '#64748B'; e.target.style.borderColor = '#CBD5E1'; }}>
+                    เริ่มต้นรอบการทดสอบใหม่
+                </button>
+            </div>
+        </div>
+    </div>
+)}
 
             <div className="main-container slide-up">
                 
-                {/* 📍 หน้า 1: เลือกหมวดวิชาหลัก */}
+                {/*  หน้า 1: เลือกหมวดวิชาหลัก */}
                 {step === 'select_category' && (
                     <div className="fade-in">
                         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -315,7 +390,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                     </div>
                 )}
 
-                {/* 📍 หน้า 2: เลือกพาร์ทย่อย */}
+                {/*  หน้า 2: เลือกพาร์ทย่อย */}
                 {step === 'select_part' && (
                     <div className="fade-in">
                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #E5E7EB', paddingBottom: '20px' }}>
@@ -342,7 +417,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                     </div>
                 )}
 
-                {/* 📍 หน้า 3: ปุ่มกดเริ่ม */}
+                {/*  หน้า 3: ปุ่มกดเริ่ม (คงดีไซน์ดั้งเดิมไว้ทั้งหมด) */}
                 {step === 'start' && (
                     <div className="fade-in" style={{ textAlign: 'center', padding: '30px 0' }}>
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '20px' }}>
@@ -353,7 +428,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                         
                         <h2 style={{ color: '#1A365D', margin: '0 0 15px 0', fontSize: '26px', fontWeight: '600' }}>เตรียมฝึกทำข้อสอบ</h2>
                         
-                        <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #D69E2E', display: 'inline-block', textAlign: 'left', marginBottom: '35px' }}>
+                        <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #D69E2E', display: 'inline-block', textAlign: 'left', marginBottom: '35px', width: '100%', maxWidth: '500px' }}>
                             <h3 style={{ color: '#1F2937', margin: '0 0 10px 0', fontSize: '18px', fontWeight: '600' }}>วิชา: {selectedPart?.part_name}</h3>
                             <ul style={{ color: '#4B5563', fontSize: '15px', lineHeight: '1.8', margin: 0, paddingLeft: '20px' }}>
                                 <li>ระบบจะสุ่มข้อสอบมาให้ <strong>20 ข้อ</strong></li>
@@ -372,7 +447,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                                     กลับไปเลือกวิชา
                                 </button>
                             )}
-                            <button onClick={startSession} style={{ padding: '12px 35px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s', display: 'flex', alignItems: 'center' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                            <button onClick={handleStartButtonPress} style={{ padding: '12px 35px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s', display: 'flex', alignItems: 'center' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
                                 เริ่มทำข้อสอบ
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '8px' }}><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                             </button>
@@ -380,7 +455,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                     </div>
                 )}
 
-                {/* 📍 หน้า 4: กำลังทำข้อสอบ */}
+                {/*  หน้า 4: กำลังทำข้อสอบ */}
                 {step === 'playing' && (
                     <div className="fade-in">
                         {!questionData ? (
@@ -432,7 +507,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                     </div>
                 )}
 
-                {/* 📍 หน้า 5: หน้าสรุปผล */}
+                {/*  หน้า 5: หน้าสรุปผล */}
                 {step === 'summary' && (
                     <div className="fade-in" style={{ textAlign: 'center', padding: '30px 0' }}>
                         {examHistory[examHistory.length - 1]?.feedback?.summary?.is_passed ? (
@@ -466,24 +541,18 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
-                            {targetPartId ? (
-                                <button onClick={handleExit} style={{ flex: 1, padding: '12px 20px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
-                                    กลับไปหน้าตาราง
-                                </button>
-                            ) : (
-                                <button onClick={handleExit} style={{ flex: 1, padding: '12px 20px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
-                                    กลับหน้าหลัก
-                                </button>
-                            )}
+                            <button onClick={handleExit} style={{ flex: 1, padding: '12px 20px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
+                                {targetPartId ? 'กลับไปหน้าตาราง' : 'กลับหน้าหลัก'}
+                            </button>
 
-                            <button onClick={() => setStep('review')} style={{ flex: 2, padding: '12px 20px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                            <button onClick={() => { setReviewPage(1); setStep('review'); }} style={{ flex: 2, padding: '12px 20px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
                                 ตรวจสอบเฉลย
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* 📍 หน้า 6: หน้าดูเฉลยย้อนหลัง */}
+                {/*  หน้า 6: หน้าดูเฉลยย้อนหลัง */}
                 {step === 'review' && (
                     <div className="fade-in">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #E5E7EB', paddingBottom: '20px' }}>
@@ -495,13 +564,14 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                            {examHistory.map((item, index) => {
+                            {currentReviewItems.map((item, index) => {
                                 const isCorrect = item.feedback.is_correct;
+                                const actualIndex = (reviewPage - 1) * itemsPerPage + index;
+
                                 return (
                                     <div key={index} style={{ padding: '24px', borderRadius: '6px', borderLeft: `4px solid ${isCorrect ? '#10B981' : '#EF4444'}`, background: '#F8FAFC', borderTop: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
-                                        
                                         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                                            <div style={{ fontWeight: '600', color: isCorrect ? '#059669' : '#B91C1C', fontSize: '16px', minWidth: '45px' }}>ข้อ {index + 1}.</div>
+                                            <div style={{ fontWeight: '600', color: isCorrect ? '#059669' : '#B91C1C', fontSize: '16px', minWidth: '45px' }}>ข้อ {actualIndex + 1}.</div>
                                             <div style={{ color: '#1F2937', fontWeight: '500', fontSize: '15px', lineHeight: '1.6' }}>
                                                 {item.question.question_text.replace(/^\d+\s*[).]\s*/, '')}
                                             </div>
@@ -534,6 +604,22 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                                 );
                             })}
                         </div>
+
+                        {totalReviewPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '35px', borderTop: '1px solid #E5E7EB', paddingTop: '20px' }}>
+                                <button className="page-btn" onClick={() => setReviewPage(prev => Math.max(1, prev - 1))} disabled={reviewPage === 1}>
+                                    ก่อนหน้า
+                                </button>
+                                {[...Array(totalReviewPages)].map((_, idx) => (
+                                    <button key={idx} className={`page-btn ${reviewPage === idx + 1 ? 'active' : ''}`} onClick={() => setReviewPage(idx + 1)}>
+                                        {idx + 1}
+                                    </button>
+                                ))}
+                                <button className="page-btn" onClick={() => setReviewPage(prev => Math.min(totalReviewPages, prev + 1))} disabled={reviewPage === totalReviewPages}>
+                                    ถัดไป
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

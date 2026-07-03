@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 export default function AuthPage({ onLoginSuccess }) {
     const [isLoginMode, setIsLoginMode] = useState(true);
-    // 🟢 [แก้ไข 1] เพิ่ม education_level โดยตั้งค่าเริ่มต้นไว้ที่ 'ป.ตรี'
+    
     const [formData, setFormData] = useState({ name: '', email: '', password: '', education_level: 'ป.ตรี' });
     const [isLoading, setIsLoading] = useState(false);
 
@@ -33,7 +33,7 @@ export default function AuthPage({ onLoginSuccess }) {
                     setFormData({ name: '', email: '', password: '', education_level: 'ป.ตรี' });
                 }
             } else {
-                alert(`⚠️ ${data.error}`);
+                alert(` ${data.error}`);
             }
         } catch (error) {
             console.error("Auth Error:", error);
@@ -61,7 +61,7 @@ export default function AuthPage({ onLoginSuccess }) {
                                 <input type="text" name="name" value={formData.name} onChange={handleChange} required style={{ width: '100%', padding: '10px 15px', borderRadius: '6px', border: '1px solid #D1D5DB', boxSizing: 'border-box' }} />
                             </div>
                             
-                            {/* 🟢 [แก้ไข 2] เพิ่มช่อง Dropdown สำหรับเลือกระดับการศึกษา (แสดงเฉพาะตอนสมัคร) */}
+                            {/*  [แก้ไข 2] เพิ่มช่อง Dropdown สำหรับเลือกระดับการศึกษา (แสดงเฉพาะตอนสมัคร) */}
                             <div>
                                 <label style={{ fontSize: '14px', color: '#374151', fontWeight: '500', marginBottom: '5px', display: 'block' }}>ระดับการศึกษา</label>
                                 <select name="education_level" value={formData.education_level} onChange={handleChange} required style={{ width: '100%', padding: '10px 15px', borderRadius: '6px', border: '1px solid #D1D5DB', boxSizing: 'border-box', backgroundColor: '#FFFFFF', cursor: 'pointer' }}>
