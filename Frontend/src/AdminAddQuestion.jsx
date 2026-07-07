@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import './App.css'; 
 
 function AdminAddQuestion() {
     const [partList, setPartList] = useState([]);
@@ -117,7 +116,7 @@ function AdminAddQuestion() {
                 * { box-sizing: border-box; }
                 
                 .admin-card { background: #FFFFFF; padding: 25px 30px; border-radius: 8px; border: 1px solid #E5E7EB; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 20px; }
-                .admin-card-header { display: flex; alignItems: center; color: #1A365D; font-size: 18px; font-weight: 600; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #F3F4F6; }
+                .admin-card-header { display: flex; align-items: center; color: #1A365D; font-size: 18px; font-weight: 600; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #F3F4F6; }
                 
                 .input-group { margin-bottom: 18px; }
                 .input-label { display: block; font-size: 14px; font-weight: 500; color: #4B5563; margin-bottom: 8px; }
@@ -130,7 +129,15 @@ function AdminAddQuestion() {
                 .file-upload-wrapper input[type="file"] { font-size: 13px; color: #6B7280; width: 100%; }
                 
                 .grid-2-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-                @media (max-width: 768px) { .grid-2-cols { grid-template-columns: 1fr; } }
+                
+                @media (max-width: 768px) { 
+                    .grid-2-cols { grid-template-columns: 1fr; } 
+                    .admin-card { padding: 15px 20px; }
+                    .admin-card-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+                    .header-actions { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+                    .header-actions input[type="file"], .header-actions button { width: 100%; }
+                    .download-btn { width: 100%; justify-content: center; }
+                }
             `}</style>
 
             <div style={{ maxWidth: '850px', margin: '0 auto' }}>
@@ -144,20 +151,19 @@ function AdminAddQuestion() {
                     </div>
                 </div>
                 
-                {/*  กล่องอัพโหลด Excel  */}
                 <div className="admin-card" style={{ borderTop: '4px solid #10B981', marginBottom: '30px' }}>
                     <div className="admin-card-header" style={{ color: '#059669', borderBottom: 'none', paddingBottom: 0, marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-                            นำเข้าข้อสอบรวดเดียวผ่านไฟล์ Excel (Bulk Upload)
+                            นำเข้าข้อสอบรวดเดียวผ่านไฟล์ Excel
                         </div>
-                        <a href="/template_mock_exam.xlsx" download style={{ fontSize: '13px', background: '#ECFDF5', color: '#059669', padding: '6px 12px', borderRadius: '4px', textDecoration: 'none', display: 'flex', alignItems: 'center', border: '1px solid #A7F3D0', fontWeight: '500' }}>
+                        <a href="/template_mock_exam.xlsx" download className="download-btn" style={{ fontSize: '13px', background: '#ECFDF5', color: '#059669', padding: '6px 12px', borderRadius: '4px', textDecoration: 'none', display: 'flex', alignItems: 'center', border: '1px solid #A7F3D0', fontWeight: '500' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             โหลดไฟล์เทมเพลต
                         </a>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '25px' }}>
+                    <div className="header-actions" style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap' }}>
                         <input 
                             type="file" 
                             accept=".xlsx, .xls" 
@@ -173,12 +179,10 @@ function AdminAddQuestion() {
                         </button>
                     </div>
 
-                    {/* ส่วนแสดงตัวอย่าง 2 ตาราง (อังกฤษ และ ไทย) */}
                     <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '13px' }}>
                         
-                        {/* ตารางที่ 1: ภาษาอังกฤษ (ต้นฉบับ) */}
                         <div style={{ color: '#1A365D', fontWeight: '600', marginBottom: '8px', fontSize: '14px' }}>
-                            1. รูปแบบหัวคอลัมน์ (Header) ต้นฉบับ <span style={{ color: '#EF4444' }}>*ต้องใช้ภาษาอังกฤษตามนี้เป๊ะๆ*</span>
+                            1. รูปแบบหัวคอลัมน์ (Header) ต้นฉบับ <span style={{ color: '#EF4444' }}>*ต้องใช้ภาษาอังกฤษตามนี้*</span>
                         </div>
                         <div style={{ overflowX: 'auto', marginBottom: '25px' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
@@ -215,7 +219,6 @@ function AdminAddQuestion() {
                             </table>
                         </div>
 
-                        {/* ตารางที่ 2: ภาษาไทย (คำอธิบาย) */}
                         <div style={{ color: '#059669', fontWeight: '600', marginBottom: '8px', fontSize: '14px' }}>
                             2. คำอธิบายความหมายของแต่ละคอลัมน์ (ภาษาไทย)
                         </div>
@@ -257,17 +260,14 @@ function AdminAddQuestion() {
                     </div>
                 </div>
 
-                {/* เส้นแบ่งคั่นกลาง */}
                 <div style={{ display: 'flex', alignItems: 'center', margin: '40px 0 20px 0' }}>
                     <div style={{ flex: 1, height: '1px', background: '#D1D5DB' }}></div>
-                    <span style={{ padding: '0 15px', color: '#6B7280', fontSize: '14px', fontWeight: '500' }}>หรือ กรอกข้อสอบทีละข้อแบบละเอียด</span>
+                    <span style={{ padding: '0 15px', color: '#6B7280', fontSize: '14px', fontWeight: '500', textAlign: 'center' }}>หรือ กรอกข้อสอบทีละข้อแบบละเอียด</span>
                     <div style={{ flex: 1, height: '1px', background: '#D1D5DB' }}></div>
                 </div>
 
-                {/*  ฟอร์มกรอกทีละข้อ  */}
                 <form onSubmit={handleSubmit}>
                     
-                    {/* --- ส่วนตั้งค่าโจทย์ --- */}
                     <div className="admin-card" style={{ borderTop: '4px solid #1A365D' }}>
                         <div className="admin-card-header">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
@@ -311,7 +311,6 @@ function AdminAddQuestion() {
                         </div>
                     </div>
 
-                    {/* --- ส่วนช้อยส์ --- */}
                     <div className="admin-card">
                         <div className="admin-card-header">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
@@ -345,7 +344,6 @@ function AdminAddQuestion() {
                         </div>
                     </div>
 
-                    {/* --- ส่วนเฉลย --- */}
                     <div className="admin-card">
                         <div className="admin-card-header">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>

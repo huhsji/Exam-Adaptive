@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-//  API สร้างชุดข้อสอบ 100 ข้อตามเลเวลผู้ใช้
+// API สร้างชุดข้อสอบ 100 ข้อตามเลเวลผู้ใช้ (อัปเกรดลอจิกตัวตายตัวแทน)
 router.post('/generate', async (req, res) => {
     try {
         const { user_id } = req.body;
@@ -24,45 +24,42 @@ router.post('/generate', async (req, res) => {
             userSkillMap[skill.part_name] = skill.proficiency_level;
         });
 
-       //  ฟังก์ชันตัวช่วย: ดึงข้อสอบตามหมวดหมู่หลัก (Main Category)
-        const fetchQuestions = async (mainCategoryName, quotaLimit) => {
+       // ฟังก์ชันตัวช่วย: ดึงข้อสอบตามหมวดหมู่หลัก (ใช้ LIKE ป้องกันการสะกดไม่ตรงเป๊ะ)
+        const fetchQuestions = async (mainCategoryKeyword, quotaLimit) => {
             const [parts] = await db.query(
-                `SELECT id, part_name FROM parts WHERE category = ?`,
-                [mainCategoryName]
+                `SELECT id, part_name FROM parts WHERE category LIKE ?`,
+                [`%${mainCategoryKeyword}%`]
             );
 
             if (parts.length === 0) return [];
 
-            // สร้างตะกร้า 3 ใบเพื่อแยกข้อสอบตามระดับความยาก
-            let easyPool = [];     // ตะกร้าข้อง่าย (Level ต่ำกว่าปัจจุบัน)
-            let currentPool = [];  // ตะกร้าข้อพอดีเลเวล (Level ปัจจุบัน)
-            let hardPool = [];     // ตะกร้าข้อยากท้าทาย (Level สูงกว่าปัจจุบัน)
+            let easyPool = [];     
+            let currentPool = [];  
+            let hardPool = [];     
 
             for (let row of parts) {
                 const partId = row.id;
                 const partName = row.part_name;
                 
-                //ดึงสกิลของพาร์ทนี้ ถ้าไม่มีให้เริ่มที่เลเวล 3
-                const diffLevel = userSkillMap[partName] || 3; 
+                // ถ้าไม่มีข้อมูลถือว่าเป็น Level 1
+                const diffLevel = userSkillMap[partName] || 1; 
                 const easyLevel = Math.max(diffLevel - 1, 1);
                 const challengeLevel = Math.min(diffLevel + 1, 5); 
 
-                // ดึงข้อสอบแบบสุ่มของพาร์ทนี้ขึ้นมาเผื่อไว้ (LIMIT 40 เพื่อดึงมาตุนไว้ในโกดัง)
+                // ดึงข้อสอบมาตุนไว้เยอะๆ ก่อน (เพิ่ม LIMIT เป็น 200 เผื่อข้อสอบขาด)
                 const [qList] = await db.query(`
                     SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d, exam_year, explanation, correct_answer
                     FROM questions
                     WHERE part_id = ? AND difficulty_level IN (?, ?, ?)
-                    ORDER BY RAND() LIMIT 40
+                    ORDER BY RAND() LIMIT 200
                 `, [partId, easyLevel, diffLevel, challengeLevel]);
 
-                // แยกข้อสอบโยนลงตะกร้าแต่ละใบ
                 qList.forEach(q => {
-                    // แปลงช้อยส์จับมัดรวมเป็น Array
                     const optionsArray = [q.option_a, q.option_b, q.option_c, q.option_d];
                     delete q.option_a; delete q.option_b; delete q.option_c; delete q.option_d;
                     const formattedQ = { ...q, options: optionsArray };
 
-                    // เช็กว่าข้อนี้ควรอยู่ตะกร้าไหน (อิงตามเลเวลของพาร์ทนี้)
+                    // แยกข้อสอบลงตะกร้า
                     if (q.difficulty_level === diffLevel) {
                         currentPool.push(formattedQ);
                     } else if (q.difficulty_level < diffLevel) {
@@ -73,36 +70,67 @@ router.post('/generate', async (req, res) => {
                 });
             }
 
-            // เขย่าตะกร้าแต่ละใบให้มั่ว (ข้อสอบจากทุกพาร์ทจะผสมกัน)
+            // เขย่าตะกร้าแต่ละใบให้มั่ว
             easyPool.sort(() => Math.random() - 0.5);
             currentPool.sort(() => Math.random() - 0.5);
             hardPool.sort(() => Math.random() - 0.5);
 
-            // คำนวณโควตาว่าจะหยิบจากตะกร้าไหนกี่ข้อ (สัดส่วน 10 - 80 - 10)
+            // โควตา 10 - 80 - 10
             const easyQuota = Math.floor(quotaLimit * 0.1); 
             const hardQuota = Math.floor(quotaLimit * 0.1); 
 
             let finalQuestions = [];
 
-            // หยิบข้อง่าย และข้อยาก ใส่ชุดข้อสอบจริงก่อน
-            finalQuestions.push(...easyPool.slice(0, easyQuota));
-            finalQuestions.push(...hardPool.slice(0, hardQuota));
+            // หยิบข้อง่าย และข้อยาก
+            finalQuestions.push(...easyPool.splice(0, easyQuota));
+            finalQuestions.push(...hardPool.splice(0, hardQuota));
 
-            // โควตาที่เหลือทั้งหมด (80% หรือส่วนที่ยังขาด) ให้ไปโกยมาจากตะกร้าเลเวลหลัก
+            // โควตาที่เหลือ โกยจาก currentPool
             const remainingQuota = quotaLimit - finalQuestions.length;
-            finalQuestions.push(...currentPool.slice(0, remainingQuota));
+            finalQuestions.push(...currentPool.splice(0, remainingQuota));
 
-            // เขย่ารวมครั้งสุดท้าย เพื่อไม่ให้ข้อง่ายไปกองอยู่ข้อแรกๆ
+            // LIFESAVER 1: ถ้าดึง currentPool แล้วยังไม่พอ ให้เอาของที่เหลือในตะกร้าอื่นมาโปะ
+            if (finalQuestions.length < quotaLimit) {
+                let leftoverPool = [...easyPool, ...currentPool, ...hardPool];
+                leftoverPool.sort(() => Math.random() - 0.5);
+                
+                const fillAmount = quotaLimit - finalQuestions.length;
+                finalQuestions.push(...leftoverPool.splice(0, fillAmount));
+            }
+
+            //  ULTIMATE LIFESAVER 2: ถ้าตะกร้าบนว่างเปล่าจริงๆ กวาดข้อสอบที่เหลือทั้งหมดใน DB มาโปะ!
+            if (finalQuestions.length < quotaLimit) {
+                const ultimateFillAmount = quotaLimit - finalQuestions.length;
+                const partIds = parts.map(p => p.id);
+                
+                if (partIds.length > 0) {
+                    const existingIds = finalQuestions.map(q => q.id);
+                    const excludeIds = existingIds.length > 0 ? existingIds.join(',') : '0'; 
+                    
+                    const [emergencyQuestions] = await db.query(`
+                        SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d, exam_year, explanation, correct_answer
+                        FROM questions
+                        WHERE part_id IN (?) AND id NOT IN (${excludeIds})
+                        ORDER BY RAND() LIMIT ?
+                    `, [partIds, ultimateFillAmount]);
+
+                    emergencyQuestions.forEach(q => {
+                        const optionsArray = [q.option_a, q.option_b, q.option_c, q.option_d];
+                        delete q.option_a; delete q.option_b; delete q.option_c; delete q.option_d;
+                        finalQuestions.push({ ...q, options: optionsArray });
+                    });
+                }
+            }
+
+            // เขย่ารวมครั้งสุดท้าย ตัดให้พอดีเป๊ะ
             finalQuestions.sort(() => Math.random() - 0.5);
-
-            return finalQuestions;
+            return finalQuestions.slice(0, quotaLimit);
         };
 
-        // [ส่วนที่พี่ฮัชเผลอลบทิ้งไป] 
-        // 2. สั่งดึงข้อสอบตามโควตา 50 - 25 - 25
-        const part1 = await fetchQuestions('วิชาความรู้ความสามารถในการคิดวิเคราะห์', 50);
-        const part2 = await fetchQuestions('วิชาภาษาอังกฤษ', 25);
-        const part3 = await fetchQuestions('วิชาความรู้และลักษณะการเป็นข้าราชการที่ดี', 25);
+        // 2. สั่งดึงข้อสอบ (ใช้ Keyword สั้นๆ เพื่อให้ LIKE ทำงานได้ครอบคลุม)
+        const part1 = await fetchQuestions('คิดวิเคราะห์', 50);
+        const part2 = await fetchQuestions('อังกฤษ', 25);
+        const part3 = await fetchQuestions('ข้าราชการที่ดี', 25);
 
         // 3. เอาข้อสอบทั้ง 3 ก้อนมารวมร่างกัน
         let allQuestions = [...part1, ...part2, ...part3];
@@ -115,8 +143,7 @@ router.post('/generate', async (req, res) => {
             `INSERT INTO exam_sessions (user_id, session_type) VALUES (?, ?)`,
             [user_id, 'mock_exam_100']
         );
-       
-
+        
         // 6. ส่งชุดข้อสอบกลับไปให้หน้าบ้าน
         res.json({
             message: "สร้างชุดข้อสอบ Mock Exam สำเร็จ",
@@ -131,7 +158,7 @@ router.post('/generate', async (req, res) => {
     }
 });
 
-//  API บันทึกคะแนนสอบ Mock Exam
+// API บันทึกคะแนนสอบ Mock Exam (คงเดิม)
 router.post('/submit', async (req, res) => {
     try {
         const { session_id, total_score } = req.body;
@@ -140,7 +167,6 @@ router.post('/submit', async (req, res) => {
             return res.status(400).json({ error: "ไม่พบข้อมูลรอบการสอบ (session_id)" });
         }
 
-        // อัปเดตคะแนนลงในตาราง exam_sessions และปิดสถานะการสอบ
         await db.query(`
             UPDATE exam_sessions 
             SET total_score = ?, 

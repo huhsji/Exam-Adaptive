@@ -6,10 +6,10 @@ const db = require('../db');
 
 const SECRET_KEY = process.env.JWT_SECRET; 
 
-//  API: สมัครสมาชิก (Register)
+
 router.post('/register', async (req, res) => {
     try {
-        //  [แก้ไข 1] เพิ่มการรับค่า education_level จากหน้าบ้าน
+        
         const { name, email, password, education_level } = req.body;
         
         // เช็กว่ากรอกข้อมูลครบไหม
@@ -25,13 +25,13 @@ router.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        //  [แก้ไข 2] เพิ่ม education_level ลงในคำสั่ง SQL INSERT
+       
         const [result] = await db.query(
             `INSERT INTO users (name, email, password_hash, education_level, created_at) VALUES (?, ?, ?, ?, NOW())`,
             [name, email, passwordHash, education_level]
         );
 
-        res.status(201).json({ message: "สมัครสมาชิกสำเร็จ! กรุณาล็อกอิน", user_id: result.insertId });
+        res.status(201).json({ message: "สมัครสมาชิกสำเร็จ กรุณาล็อกอิน", user_id: result.insertId });
 
     } catch (error) {
         console.error("Register Error:", error);
@@ -62,7 +62,7 @@ router.post('/login', async (req, res) => {
         // 3. สร้างบัตรผ่าน JWT Token
         const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: '1d' });
 
-        //  [แก้ไข] เพิ่มการส่งค่า user.role กลับไปให้ React หน้าบ้านนำไปเช็กสิทธิ์
+        
         res.json({
             message: "ล็อกอินสำเร็จ",
             token: token,

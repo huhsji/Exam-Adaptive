@@ -27,13 +27,12 @@ export default function AuthPage({ onLoginSuccess }) {
                 if (isLoginMode) {
                     onLoginSuccess(data.user);
                 } else {
-                    alert('สมัครสมาชิกสำเร็จ! กรุณาล็อกอินเข้าสู่ระบบ');
+                    alert('สมัครสมาชิกสำเร็จ กรุณาล็อกอินเข้าสู่ระบบ');
                     setIsLoginMode(true);
-                    // รีเซ็ตค่าหลังจากสมัครสำเร็จ
                     setFormData({ name: '', email: '', password: '', education_level: 'ป.ตรี' });
                 }
             } else {
-                alert(` ${data.error}`);
+                alert(data.error);
             }
         } catch (error) {
             console.error("Auth Error:", error);
@@ -43,13 +42,13 @@ export default function AuthPage({ onLoginSuccess }) {
     };
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F3F4F6', fontFamily: '"Kanit", sans-serif' }}>
-            <div style={{ background: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', width: '100%', maxWidth: '400px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F3F4F6', fontFamily: '"Kanit", sans-serif', padding: '20px' }}>
+            <div style={{ background: 'white', padding: '40px 30px', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', width: '100%', maxWidth: '400px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '30px' }}>
                     <div style={{ background: '#1A365D', width: '60px', height: '60px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto' }}>
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
                     </div>
-                    <h2 style={{ margin: 0, color: '#1A365D', fontSize: '24px' }}>ระบบสอบ ก.พ. อัจฉริยะ</h2>
+                    <h2 style={{ margin: 0, color: '#1A365D', fontSize: '24px' }}>ระบบสอบ ก.พ. ภาค ก</h2>
                     <p style={{ color: '#6B7280', marginTop: '5px' }}>{isLoginMode ? 'เข้าสู่ระบบเพื่อเรียนต่อ' : 'สร้างบัญชีใหม่เพื่อเริ่มต้น'}</p>
                 </div>
 
@@ -61,7 +60,6 @@ export default function AuthPage({ onLoginSuccess }) {
                                 <input type="text" name="name" value={formData.name} onChange={handleChange} required style={{ width: '100%', padding: '10px 15px', borderRadius: '6px', border: '1px solid #D1D5DB', boxSizing: 'border-box' }} />
                             </div>
                             
-                            {/*  [แก้ไข 2] เพิ่มช่อง Dropdown สำหรับเลือกระดับการศึกษา (แสดงเฉพาะตอนสมัคร) */}
                             <div>
                                 <label style={{ fontSize: '14px', color: '#374151', fontWeight: '500', marginBottom: '5px', display: 'block' }}>ระดับการศึกษา</label>
                                 <select name="education_level" value={formData.education_level} onChange={handleChange} required style={{ width: '100%', padding: '10px 15px', borderRadius: '6px', border: '1px solid #D1D5DB', boxSizing: 'border-box', backgroundColor: '#FFFFFF', cursor: 'pointer' }}>

@@ -347,6 +347,4 @@ router.get('/part-info', async (req, res) => {
     }
 });
 
-module.exports = router; // ต้องอยู่ล่างสุดเสมอ
-
-    module.exports = router;
+module.exports = router;

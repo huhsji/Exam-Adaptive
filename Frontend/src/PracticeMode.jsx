@@ -17,7 +17,6 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         return saved ? JSON.parse(saved) : null;
     });
 
-    // เก็บข้อมูล Session และ Part ID ที่ค้างอยู่จริงในระบบ
     const [activeSessionId, setActiveSessionId] = useState(() => {
         const saved = localStorage.getItem('practice_active_session_id');
         return saved ? parseInt(saved, 10) : null;
@@ -28,7 +27,6 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         return saved ? parseInt(saved, 10) : null;
     });
 
-    // State สำหรับเปิด/ปิดหน้าต่าง Popup เมื่อกดปุ่ม "เริ่มทำข้อสอบ"
     const [showResumeModal, setShowResumeModal] = useState(false);
 
     const [questionData, setQuestionData] = useState(null);
@@ -82,13 +80,16 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
             try {
                 const res = await fetch(`http://localhost:5000/api/practice/categories?user_id=${userId}`);
                 const data = await res.json();
-                if (res.ok) setCategories(data);
+                if (res.ok) {
+                    const filteredCategories = data.filter(cat => cat.name !== 'Mock Exam');
+                    setCategories(filteredCategories);
+                }
             } catch (error) {
                 console.error("Error fetching categories:", error);
             }
         };
         fetchCategories();
-    }, [userId]); 
+    }, [userId]);
 
     useEffect(() => {
         const bypassToTarget = async () => {
@@ -117,7 +118,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
             const data = await res.json();
 
             if (!res.ok) {
-                alert(` ${data.error || "ขออภัยครับ เกิดข้อผิดพลาดในการดึงข้อมูลข้อสอบ"}`);
+                alert(data.error || "ขออภัยครับ เกิดข้อผิดพลาดในการดึงข้อมูลข้อสอบ");
                 setStep('start');
                 return; 
             }
@@ -183,7 +184,6 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         setStep('start');
     };
 
-    //  ฟังก์ชันสำหรับเริ่มรอบการทดสอบใหม่ (New Session)
     const startNewSession = async () => {
         setShowResumeModal(false);
         try {
@@ -205,18 +205,14 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         }
     };
 
-    //  ฟังก์ชันจัดการเมื่อผู้ใช้กดปุ่ม "เริ่มทำข้อสอบ" ในหน้าเตรียมสอบ
     const handleStartButtonPress = () => {
-        // หากพบรหัส Session ของวิชาเดิมที่ค้างอยู่ ให้เปิดหน้าต่าง Modal เพื่อสอบถาม
         if (activeSessionId && activePartId === selectedPart?.id) {
             setShowResumeModal(true);
         } else {
-            // หากไม่มีข้อมูลค้าง ให้เริ่มการทดสอบใหม่ทันที
             startNewSession();
         }
     };
 
-    // ฟังก์ชันทำต่อจากรอบเดิมที่ค้างไว้
     const handleResume = () => {
         setShowResumeModal(false);
         fetchQuestion(activeSessionId, selectedPart.id);
@@ -286,55 +282,62 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                 .page-btn.active { background: #1A365D; color: #FFF; border-color: #1A365D; }
                 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-                /* สไตล์สำหรับหน้าต่าง Popup (Formal Style) */
                 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; animation: fadeIn 0.2s ease; }
                 .modal-box { background: white; padding: 36px 32px; border-radius: 12px; max-width: 440px; width: 90%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25); animation: slideUp 0.3s ease; border-top: 5px solid #D69E2E; }
+
+                .practice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+                .cat-card-inner { display: flex; align-items: center; flex: 1; }
+                .action-buttons { display: flex; justify-content: center; gap: 15px; }
+
+                @media (max-width: 768px) {
+                    .main-container { padding: 25px 20px; }
+                    h2 { font-size: 20px !important; }
+                    .modal-box { padding: 25px 20px; }
+                    .action-buttons { flex-direction: column; width: 100%; }
+                    .action-buttons button { width: 100%; }
+                    .cat-card-inner { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+                    .cat-card-inner > div { width: 100%; }
+                }
             `}</style>
 
-            {/*  หน้าต่างแจ้งเตือนอย่างเป็นทางการ เมื่อกด "เริ่มทำข้อสอบ" แล้วพบข้อมูลค้าง 🌟 */}
             {showResumeModal && (
-    <div className="modal-overlay">
-        <div className="modal-box" style={{ position: 'relative' }}>
-            {/*  [เพิ่ม] ปุ่มกากบาทมุมขวาบน */}
-            <button 
-                onClick={() => setShowResumeModal(false)} 
-                style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', fontSize: '24px', color: '#94A3B8', cursor: 'pointer', fontWeight: '300', transition: 'color 0.2s' }}
-                onMouseOver={(e) => e.target.style.color = '#1A365D'}
-                onMouseOut={(e) => e.target.style.color = '#94A3B8'}
-            >
-                &times;
-            </button>
+                <div className="modal-overlay">
+                    <div className="modal-box" style={{ position: 'relative' }}>
+                        <button 
+                            onClick={() => setShowResumeModal(false)} 
+                            style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', fontSize: '24px', color: '#94A3B8', cursor: 'pointer', fontWeight: '300', transition: 'color 0.2s' }}
+                            onMouseOver={(e) => e.target.style.color = '#1A365D'}
+                            onMouseOut={(e) => e.target.style.color = '#94A3B8'}
+                        >
+                            &times;
+                        </button>
 
-            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px auto' }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            </div>
-            
-            <h3 style={{ margin: '0 0 12px 0', color: '#1A365D', fontSize: '22px', fontWeight: '600' }}>
-                ตรวจพบการทดสอบที่ค้างอยู่
-            </h3>
-            
-            <p style={{ color: '#4B5563', fontSize: '15px', lineHeight: '1.6', margin: '0 0 28px 0' }}>
-                ระบบตรวจพบว่าคุณมีรอบการทดสอบของวิชา <strong>"{selectedPart?.part_name}"</strong> ที่ยังดำเนินการไม่เสร็จสิ้น คุณต้องการทำต่อจากข้อเดิมหรือเริ่มต้นรอบการทดสอบใหม่ครับ?
-            </p>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {/* ปุ่มหลัก: ดำเนินการต่อ */}
-                <button onClick={handleResume} style={{ padding: '13px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', cursor: 'pointer', boxShadow: '0 4px 6px rgba(26, 54, 93, 0.18)', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
-                    ดำเนินการต่อจากรอบเดิม
-                </button>
-                
-                {/* ปุ่มรอง: เริ่มต้นใหม่ */}
-                <button onClick={startNewSession} style={{ padding: '12px', background: 'white', color: '#64748B', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.target.style.background = '#F8FAFC'; e.target.style.color = '#1E293B'; e.target.style.borderColor = '#94A3B8'; }} onMouseOut={(e) => { e.target.style.background = 'white'; e.target.style.color = '#64748B'; e.target.style.borderColor = '#CBD5E1'; }}>
-                    เริ่มต้นรอบการทดสอบใหม่
-                </button>
-            </div>
-        </div>
-    </div>
-)}
+                        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px auto' }}>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
+                        
+                        <h3 style={{ margin: '0 0 12px 0', color: '#1A365D', fontSize: '22px', fontWeight: '600' }}>
+                            ตรวจพบการทดสอบที่ค้างอยู่
+                        </h3>
+                        
+                        <p style={{ color: '#4B5563', fontSize: '15px', lineHeight: '1.6', margin: '0 0 28px 0' }}>
+                            ระบบตรวจพบว่าคุณมีรอบการทดสอบของวิชา <strong>"{selectedPart?.part_name}"</strong> ที่ยังดำเนินการไม่เสร็จสิ้น คุณต้องการทำต่อจากข้อเดิมหรือเริ่มต้นรอบการทดสอบใหม่ครับ?
+                        </p>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <button onClick={handleResume} style={{ padding: '13px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', cursor: 'pointer', boxShadow: '0 4px 6px rgba(26, 54, 93, 0.18)', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                                ดำเนินการต่อจากรอบเดิม
+                            </button>
+                            <button onClick={startNewSession} style={{ padding: '12px', background: 'white', color: '#64748B', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.target.style.background = '#F8FAFC'; e.target.style.color = '#1E293B'; e.target.style.borderColor = '#94A3B8'; }} onMouseOut={(e) => { e.target.style.background = 'white'; e.target.style.color = '#64748B'; e.target.style.borderColor = '#CBD5E1'; }}>
+                                เริ่มต้นรอบการทดสอบใหม่
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="main-container slide-up">
                 
-                {/*  หน้า 1: เลือกหมวดวิชาหลัก */}
                 {step === 'select_category' && (
                     <div className="fade-in">
                         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -353,9 +356,9 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                                     return (
                                         <div 
                                             key={index} className="card-hover" onClick={() => handleSelectCategory(category.name)}
-                                            style={{ padding: '24px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            style={{ padding: '24px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                                             
-                                            <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                            <div className="cat-card-inner">
                                                 <div style={{ background: '#F1F5F9', padding: '10px', borderRadius: '6px', marginRight: '15px' }}>
                                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                                                 </div>
@@ -381,7 +384,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                                                 </div>
                                             </div>
                                             
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '10px' }}><polyline points="9 18 15 12 9 6"></polyline></svg>
                                         </div>
                                     );
                                 })}
@@ -390,11 +393,10 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                     </div>
                 )}
 
-                {/*  หน้า 2: เลือกพาร์ทย่อย */}
                 {step === 'select_part' && (
                     <div className="fade-in">
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #E5E7EB', paddingBottom: '20px' }}>
-                            <button onClick={() => setStep('select_category')} style={{ display: 'flex', alignItems: 'center', background: '#F3F4F6', border: '1px solid #E5E7EB', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', color: '#4B5563', marginRight: '20px', transition: 'background 0.2s' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #E5E7EB', paddingBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                            <button onClick={() => setStep('select_category')} style={{ display: 'flex', alignItems: 'center', background: '#F3F4F6', border: '1px solid #E5E7EB', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', color: '#4B5563', transition: 'background 0.2s' }}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                                 กลับไปหมวดวิชาหลัก
                             </button>
@@ -404,7 +406,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
+                        <div className="practice-grid">
                             {parts.map((part) => (
                                 <div key={part.id} className="card-hover" onClick={() => handleSelectPart(part)} style={{ padding: '20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                     <div style={{ background: '#EBF4FF', padding: '10px', borderRadius: '6px', marginRight: '15px' }}>
@@ -417,7 +419,6 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                     </div>
                 )}
 
-                {/*  หน้า 3: ปุ่มกดเริ่ม (คงดีไซน์ดั้งเดิมไว้ทั้งหมด) */}
                 {step === 'start' && (
                     <div className="fade-in" style={{ textAlign: 'center', padding: '30px 0' }}>
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '20px' }}>
@@ -437,7 +438,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                             </ul>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
+                        <div className="action-buttons">
                             {targetPartId ? (
                                 <button onClick={handleExit} style={{ padding: '12px 25px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
                                     กลับไปหน้าตาราง
@@ -447,7 +448,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                                     กลับไปเลือกวิชา
                                 </button>
                             )}
-                            <button onClick={handleStartButtonPress} style={{ padding: '12px 35px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s', display: 'flex', alignItems: 'center' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                            <button onClick={handleStartButtonPress} style={{ padding: '12px 35px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
                                 เริ่มทำข้อสอบ
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '8px' }}><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                             </button>
@@ -455,7 +456,6 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                     </div>
                 )}
 
-                {/*  หน้า 4: กำลังทำข้อสอบ */}
                 {step === 'playing' && (
                     <div className="fade-in">
                         {!questionData ? (
@@ -507,9 +507,9 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                     </div>
                 )}
 
-                {/*  หน้า 5: หน้าสรุปผล */}
                 {step === 'summary' && (
                     <div className="fade-in" style={{ textAlign: 'center', padding: '30px 0' }}>
+                        
                         {examHistory[examHistory.length - 1]?.feedback?.summary?.is_passed ? (
                             <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '15px' }}>
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -524,7 +524,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                         )}
                         
                         <h2 style={{ color: examHistory[examHistory.length - 1]?.feedback?.summary?.is_passed ? '#10B981' : '#EF4444', margin: '0 0 10px 0', fontSize: '28px', fontWeight: '600' }}>
-                            {examHistory[examHistory.length - 1]?.feedback?.summary?.is_passed ? 'ยินดีด้วย! คุณสอบผ่านเกณฑ์' : 'พยายามเข้านะ! คุณยังไม่ผ่านเกณฑ์'}
+                            {examHistory[examHistory.length - 1]?.feedback?.summary?.is_passed ? 'ยินดีด้วย คุณสอบผ่านเกณฑ์' : 'พยายามเข้านะ คุณยังไม่ผ่านเกณฑ์'}
                         </h2>
                         <p style={{ color: '#6B7280', margin: '0 0 30px 0', fontSize: '15px' }}>
                             เกณฑ์การผ่านของวิชานี้สำหรับวุฒิของคุณคือ {examHistory[examHistory.length - 1]?.feedback?.summary?.passing_criteria}%
@@ -540,19 +540,28 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
-                            <button onClick={handleExit} style={{ flex: 1, padding: '12px 20px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#F3F4F6'} onMouseOut={(e) => e.target.style.background = '#FFFFFF'}>
+                        <div className="action-buttons">
+                            <button 
+                                onClick={handleExit} 
+                                style={{ flex: 1, padding: '12px 20px', cursor: 'pointer', background: '#FFFFFF', color: '#4B5563', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} 
+                                onMouseOver={(e) => e.target.style.background = '#F3F4F6'} 
+                                onMouseOut={(e) => e.target.style.background = '#FFFFFF'}
+                            >
                                 {targetPartId ? 'กลับไปหน้าตาราง' : 'กลับหน้าหลัก'}
                             </button>
 
-                            <button onClick={() => { setReviewPage(1); setStep('review'); }} style={{ flex: 2, padding: '12px 20px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                            <button 
+                                onClick={() => { setReviewPage(1); setStep('review'); }} 
+                                style={{ flex: 2, padding: '12px 20px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', transition: 'background 0.2s' }} 
+                                onMouseOver={(e) => e.target.style.background = '#2A4365'} 
+                                onMouseOut={(e) => e.target.style.background = '#1A365D'}
+                            >
                                 ตรวจสอบเฉลย
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/*  หน้า 6: หน้าดูเฉลยย้อนหลัง */}
                 {step === 'review' && (
                     <div className="fade-in">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #E5E7EB', paddingBottom: '20px' }}>
@@ -577,7 +586,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                                             </div>
                                         </div>
                                         
-                                        <div style={{ marginLeft: '57px', fontSize: '14px', lineHeight: '1.8', color: '#4B5563' }}>
+                                        <div style={{ paddingLeft: '57px', fontSize: '14px', lineHeight: '1.8', color: '#4B5563' }}>
                                             <div style={{ display: 'flex', alignItems: 'flex-start', margin: '6px 0' }}>
                                                 <span style={{ width: '110px', color: '#6B7280' }}>คำตอบของคุณ:</span> 
                                                 <span style={{ color: isCorrect ? '#059669' : '#B91C1C', fontWeight: '500' }}>{item.user_answer}</span>
@@ -606,7 +615,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                         </div>
 
                         {totalReviewPages > 1 && (
-                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '35px', borderTop: '1px solid #E5E7EB', paddingTop: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '35px', borderTop: '1px solid #E5E7EB', paddingTop: '20px', flexWrap: 'wrap' }}>
                                 <button className="page-btn" onClick={() => setReviewPage(prev => Math.max(1, prev - 1))} disabled={reviewPage === 1}>
                                     ก่อนหน้า
                                 </button>

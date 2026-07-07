@@ -1,38 +1,40 @@
 const express = require('express');
 const router = express.Router();
-const db  = require('../db');
+const db = require('../db');
 
-router.get('/' , async (req , res) =>{
+router.get('/', async (req, res) => {
     try {
         const { user_id } = req.query;
         if(!user_id) return res.status(400).json({error: "กรุณาส่ง user_id "});
 
         const [[user]] = await db.query(`SELECT target_exam_date FROM users WHERE id = ?`, [user_id]);
 
+        //  JOIN user_skills เพื่อเอา proficiency_level ส่งไปให้หน้าบ้านตัดสินใจเปลี่ยนสีการ์ด
         const [planners] = await db.query(`
             SELECT 
                 sp.part_id, 
                 p.category, 
                 p.part_name, 
-                DATE_FORMAT(sp.scheduled_date, '%Y-%m-%d') as scheduled_date,
-                sp.is_completed
+                DATE_FORMAT(sp.scheduled_date, '%Y-%m-%d') as scheduled_date, 
+                sp.is_completed,
+                IFNULL(us.proficiency_level, 0) as current_level
             FROM study_planners sp
             JOIN parts p ON sp.part_id = p.id
+            LEFT JOIN user_skills us ON p.id = us.part_id AND us.user_id = sp.user_id
             WHERE sp.user_id = ?
             ORDER BY sp.scheduled_date ASC
         `, [user_id]);
 
         const [progressRaw] = await db.query(`
             SELECT 
-                p.category,
-                COUNT(p.id) as total_parts,
+                p.category, 
+                COUNT(p.id) as total_parts, 
                 SUM(CASE WHEN us.proficiency_level >= 3 THEN 1 ELSE 0 END) as passed_parts
             FROM parts p
             LEFT JOIN user_skills us ON p.id = us.part_id AND us.user_id = ?
             GROUP BY p.category
         `, [user_id]);
 
-        // แปลงเป็น %
         const progress = progressRaw.map(row => ({
             category: row.category,
             percentage: row.total_parts > 0 ? Math.round((row.passed_parts / row.total_parts) * 100) : 0,
@@ -42,7 +44,8 @@ router.get('/' , async (req , res) =>{
 
         res.json({
             target_exam_date: user ? user.target_exam_date : null,
-            planners: planners
+            planners: planners,
+            progress: progress
         });
 
     }catch (error) {
@@ -51,7 +54,7 @@ router.get('/' , async (req , res) =>{
     }
 });
 
-router.post('/toggle-plan' , async (req , res) => {
+router.post('/toggle-plan', async (req, res) => {
     try {
         const {user_id, part_id, scheduled_date, is_completed } = req.body;
         if (!user_id || !part_id || !scheduled_date) return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
@@ -70,31 +73,45 @@ router.post('/toggle-plan' , async (req , res) => {
     }
 });
 
-router.post('/generate' , async (req , res) => {
-    try{
+router.post('/generate', async (req, res) => {
+    try {
         const { user_id, target_date } = req.body;
-
-        if (!user_id || !target_date) {
-            return res.status(400).json({ error: "กรุณาส่ง user_id และ target_date มาให้ครบถ้วนครับ" });
-        }
-        // อัปเดตวันสอบเป้าหมายลงตาราง users
+        if (!user_id || !target_date) return res.status(400).json({ error: "กรุณาส่ง user_id และ target_date มาให้ครบถ้วน" });
+        
         await db.query(`UPDATE users SET target_exam_date = ? WHERE id = ?`, [target_date, user_id]);
 
-        // เคลียร์แผนเดิมในอนาคตที่ยังทำไม่เสร็จ 
-        await db.query(`
+        //  กฎทับตาราง "วันนี้": เช็กว่าวันนี้มียูสเซอร์ทำไปหรือยัง
+        const [todayDone] = await db.query(`
+            SELECT COUNT(*) as cnt FROM study_planners 
+            WHERE user_id = ? AND scheduled_date = CURDATE() AND is_completed = 1
+        `, [user_id]);
+
+        const hasDoneToday = todayDone[0].cnt > 0;
+        
+
+        // โละตารางอนาคตทิ้ง (ถ้าวันนี้ทำแล้ว จะไม่ลบของวันนี้ทิ้ง)
+       await db.query(`
             DELETE FROM study_planners 
-            WHERE user_id = ? AND scheduled_date >= CURDATE() AND is_completed = 0
+            WHERE user_id = ? AND is_completed = 0
         `, [user_id]);
 
         const today = new Date();
+        today.setHours(0,0,0,0);
         const examDate = new Date(target_date);
+        examDate.setHours(0,0,0,0);
 
         let availableDates = [];
         let loopDate = new Date(today);
-        loopDate.setDate(loopDate.getDate() + 1);
+        if (hasDoneToday) loopDate.setDate(loopDate.getDate() + 1); // ขยับไปเริ่มพรุ่งนี้ถ้าวันนี้ทำเสร็จแล้ว
 
-        while (loopDate < examDate ) {
-            availableDates.push(loopDate.toISOString().split('T')[0]);
+        
+        while (loopDate <= examDate) {
+            const yyyy = loopDate.getFullYear();
+            const mm = String(loopDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(loopDate.getDate()).padStart(2, '0');
+            const localDateStr = `${yyyy}-${mm}-${dd}`;
+            
+            availableDates.push(localDateStr);
             loopDate.setDate(loopDate.getDate() + 1);
         }
 
@@ -102,52 +119,79 @@ router.post('/generate' , async (req , res) => {
             return res.status(400).json({ error: "ระยะเวลาสั้นเกินไป ไม่สามารถจัดตารางได้ครับ" });
         }
 
-        // ล็อก 3 วันสุดท้ายไว้สำหรับทำ Mock Exam
+        // The 3-Day Rule: แยกวันทำ Mock Exam
         let mockExamDates = [];
+        let studyDates = [];
+
         if (availableDates.length > 3) {
-            mockExamDates = availableDates.splice(-3);
+            mockExamDates = availableDates.slice(-3);
+            studyDates = availableDates.slice(0, -3);
+        } else if (availableDates.length === 3) {
+            mockExamDates = availableDates.slice(-1);
+            studyDates = availableDates.slice(0, -1);
+        } else {
+            studyDates = availableDates;
         }
 
-        // ดึงรายชื่อพาร์ทวิชาทั้งหมด เรียงลำดับตาม "จุดอ่อน" (Level น้อยสุดขึ้นก่อน)
-        const [weaknesses] = await db.query(`
+        //  แทรก "วันหยุดพักสมอง" (ตัด 1 วันออกทุกๆ 7 วัน)
+        const activeStudyDates = studyDates.filter((_, idx) => (idx + 1) % 7 !== 0);
+
+        const [allParts] = await db.query(`
             SELECT 
-                p.id as part_id,
+                p.id as part_id, 
                 IFNULL(us.proficiency_level, 0) as level
             FROM parts p
             LEFT JOIN user_skills us ON p.id = us.part_id AND us.user_id = ?
+            WHERE p.category != 'Mock Exam'
             ORDER BY level ASC, p.category, p.id
         `, [user_id]);
-        
-        if (weaknesses.length === 0) {
-            return res.status(400).json({ error: "ไม่พบข้อมูลรายวิชาในระบบ" });
+
+        if (allParts.length === 0) return res.status(400).json({ error: "ไม่พบข้อมูลรายวิชา" });
+
+        //  สายเซียน: ดึงวิชาตก (Level < 3) ถ้าไม่มีเลย ให้ดึงทั้งหมดมารีวิว (Maintenance Mode)
+        let targetParts = allParts.filter(p => p.level < 3);
+        if (targetParts.length === 0) {
+            targetParts = [...allParts]; 
         }
 
-        // ลูปแจกจ่ายวิชาลงในแต่ละวัน
-        let partIndex = 0;
-        let dayCounter = 1;
-
-        for (const dateStr of availableDates) {
-            // เว้นวันพักผ่อน ทุกๆ 7 วัน
-            if (dayCounter % 7 === 0) {
-                dayCounter++;
-                continue; 
-            }
-
-            const currentPart = weaknesses[partIndex % weaknesses.length];
+        //  สายมาราธอน: หารเฉลี่ยและ "วนลูปซ้ำ" ขยับเปลี่ยนวันไปเรื่อยๆ
+        if (activeStudyDates.length > 0) {
+            const quotaPerDay = Math.ceil(targetParts.length / activeStudyDates.length) || 1;
+            let partIndex = 0;
             
+            for (const dateStr of activeStudyDates) {
+                for (let q = 0; q < quotaPerDay; q++) {
+                    const currentPart = targetParts[partIndex % targetParts.length]; // Modulo วนลูปกลับมาเริ่มวิชาแรกใหม่
+                    
+                    await db.query(`
+                        INSERT INTO study_planners (user_id, part_id, scheduled_date, is_completed)
+                        VALUES (?, ?, ?, 0)
+                        ON DUPLICATE KEY UPDATE scheduled_date = VALUES(scheduled_date)
+                    `, [user_id, currentPart.part_id, dateStr]);
+
+                    partIndex++;
+                }
+            }
+        }
+
+        // หยอด Mock Exam 3 วันสุดท้าย
+        let [[mockPart]] = await db.query(`SELECT id FROM parts WHERE category = 'Mock Exam' LIMIT 1`);
+        if (!mockPart) {
+            const [insertMock] = await db.query(`INSERT INTO parts (category, part_name) VALUES ('Mock Exam', 'จำลองสอบจริง (100 ข้อ จับเวลา 3 ชม.)')`);
+            mockPart = { id: insertMock.insertId };
+        }
+
+        for (const dateStr of mockExamDates) {
             await db.query(`
                 INSERT INTO study_planners (user_id, part_id, scheduled_date, is_completed)
                 VALUES (?, ?, ?, 0)
                 ON DUPLICATE KEY UPDATE part_id = VALUES(part_id)
-            `, [user_id, currentPart.part_id, dateStr]);
-
-            partIndex++;
-            dayCounter++;
+            `, [user_id, mockPart.id, dateStr]);
         }
 
- res.json({ 
+        res.json({
             message: "ระบบอัจฉริยะจัดตารางติวเข้มให้คุณเรียบร้อยแล้ว!",
-            days_planned: availableDates.length,
+            days_planned: activeStudyDates.length,
             mock_days_reserved: mockExamDates.length
         });
 

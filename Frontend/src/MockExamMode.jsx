@@ -10,10 +10,7 @@ export default function MockExamMode({ userId }) {
     const [sessionId, setSessionId] = useState(null);
     const [reviewFilter, setReviewFilter] = useState('all'); 
 
-    // State สำหรับเปิด/ปิด Popup ยืนยันการส่งข้อสอบ
     const [showSubmitModal, setShowSubmitModal] = useState(false);
-
-    // State สำหรับคุมหน้าเฉลยแบ่งหน้า (Pagination)
     const [reviewPage, setReviewPage] = useState(1);
     const itemsPerPage = 10;
 
@@ -24,7 +21,7 @@ export default function MockExamMode({ userId }) {
                 setTimeLeft((prev) => prev - 1);
             }, 1000);
         } else if (timeLeft === 0 && step === 'playing') {
-            alert(' หมดเวลาทำข้อสอบ! ระบบกำลังส่งคำตอบและประมวลผลคะแนนให้อัตโนมัติครับ');
+            alert('หมดเวลาทำข้อสอบ ระบบกำลังส่งคำตอบและประมวลผลคะแนนให้อัตโนมัติครับ');
             executeSubmitExam(); 
         }
         return () => clearInterval(timerId);
@@ -52,7 +49,7 @@ export default function MockExamMode({ userId }) {
             const data = await res.json();
 
             if (!res.ok) {
-                alert(` ${data.error || 'ยังไม่มีข้อสอบจำลองในระบบครับ'}`);
+                alert(data.error || 'ยังไม่มีข้อสอบจำลองในระบบครับ');
                 return;
             }
 
@@ -76,7 +73,6 @@ export default function MockExamMode({ userId }) {
         });
     };
 
-    // ฟังก์ชันประมวลผลและส่งข้อสอบจริง
     const executeSubmitExam = async () => {
         setShowSubmitModal(false);
 
@@ -165,17 +161,30 @@ export default function MockExamMode({ userId }) {
                 .btn-page-num.active { background: #1A365D; color: white; border-color: #1A365D; }
                 .btn-page-num:disabled, .btn-page-nav:disabled { opacity: 0.4; cursor: not-allowed; }
 
-                /*  สไตล์ Popup Modal ยืนยันส่งข้อสอบ (โทนสีทางการ Navy & Gold) */
                 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; animation: fadeIn 0.2s ease; }
-                .modal-box { background: white; padding: 36px 32px; border-radius: 12px; max-width: 450px; width: 90%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25); animation: slideUp 0.3s ease; border-top: 6px solid #1A365D; }
+                .modal-box { background: white; padding: 36px 32px; border-radius: 12px; max-width: 450px; width: 95%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25); animation: slideUp 0.3s ease; border-top: 6px solid #1A365D; }
 
                 ::-webkit-scrollbar { width: 6px; }
                 ::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 4px; }
                 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
                 ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+                .mock-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+                .filter-group { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+                .summary-card { max-width: 600px; margin: 40px auto; padding: 60px 40px; }
+                .start-card { max-width: 700px; margin: 40px auto; padding: 50px; }
+                
+                @media (max-width: 768px) {
+                    .mock-grid { grid-template-columns: 1fr; display: flex; flex-direction: column-reverse; }
+                    .nav-grid { max-height: 250px; }
+                    .modal-box { padding: 25px 20px; }
+                    .summary-card { padding: 30px 20px; margin: 20px auto; }
+                    .start-card { padding: 30px 20px; }
+                    .start-card button { width: 100%; }
+                    .review-container { padding: 20px; }
+                }
             `}</style>
 
-            {/*  POPUP ยืนยันการส่งข้อสอบ (โทนสีทางการ น้ำเงินกรมท่า)  */}
             {showSubmitModal && (
                 <div className="modal-overlay">
                     <div className="modal-box">
@@ -191,7 +200,6 @@ export default function MockExamMode({ userId }) {
                             เมื่อยืนยันแล้ว ระบบจะดำเนินการประมวลผลคะแนนศักยภาพของคุณทันที และจะไม่สามารถกลับมาแก้ไขคำตอบได้อีก
                         </p>
 
-                        {/* กล่องสรุปสถานะการทำข้อสอบ (เรียบหรูทางการ) */}
                         <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '18px 20px', marginBottom: '28px', textAlign: 'left', fontSize: '14px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#334155' }}>
                                 <span>จำนวนข้อสอบทั้งหมด:</span>
@@ -207,18 +215,16 @@ export default function MockExamMode({ userId }) {
                             </div>
                             {unansweredCount > 0 && (
                                 <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #CBD5E1', fontSize: '13px', color: '#D97706', lineHeight: '1.5' }}>
-                                     ข้อสอบที่ไม่ได้เลือกคำตอบ ระบบจะคำนวณผลเป็น 0 คะแนนครับ
+                                     ข้อสอบที่ไม่ได้เลือกคำตอบ ระบบจะคำนวณผลเป็น 0 คะแนน
                                 </div>
                             )}
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {/* ปุ่มหลัก: สีน้ำเงินกรมท่า */}
                             <button onClick={executeSubmitExam} style={{ padding: '14px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', cursor: 'pointer', boxShadow: '0 4px 6px rgba(26, 54, 93, 0.18)', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
                                 ยืนยันการส่งข้อสอบและประมวลผล
                             </button>
                             
-                            {/* ปุ่มรอง: ขาวขอบเทา */}
                             <button onClick={() => setShowSubmitModal(false)} style={{ padding: '12px', background: 'white', color: '#64748B', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.target.style.background = '#F8FAFC'; e.target.style.color = '#1E293B'; e.target.style.borderColor = '#94A3B8'; }} onMouseOut={(e) => { e.target.style.background = 'white'; e.target.style.color = '#64748B'; e.target.style.borderColor = '#CBD5E1'; }}>
                                 กลับไปทบทวนข้อสอบก่อน
                             </button>
@@ -229,9 +235,8 @@ export default function MockExamMode({ userId }) {
 
             <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
                 
-                {/*  หน้า 1: รายละเอียดก่อนเริ่มสอบ */}
                 {step === 'start' && (
-                    <div style={{ background: '#FFFFFF', padding: '50px', borderRadius: '8px', borderTop: '6px solid #1A365D', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', textAlign: 'center', maxWidth: '700px', margin: '40px auto' }}>
+                    <div className="start-card" style={{ background: '#FFFFFF', borderRadius: '8px', borderTop: '6px solid #1A365D', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', textAlign: 'center' }}>
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '20px' }}>
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
@@ -244,19 +249,19 @@ export default function MockExamMode({ userId }) {
                         
                         <div style={{ textAlign: 'left', background: '#F8FAFC', padding: '25px 35px', borderRadius: '6px', borderLeft: '4px solid #D69E2E', color: '#374151', fontSize: '15px', lineHeight: '1.8' }}>
                             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', flexShrink: 0 }}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                 <span>เวลาในการทำข้อสอบ: <strong>3 ชั่วโมง</strong> (ระบบจับเวลาอัตโนมัติ)</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', flexShrink: 0 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                                 <span>จำนวนข้อสอบ: <strong>100 ข้อ</strong> (ครอบคลุมทุกหมวดวิชาตามสัดส่วน ก.พ.)</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', flexShrink: 0 }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
                                 <span>สามารถข้ามไปทำข้ออื่น และย้อนกลับมาแก้ไขคำตอบได้ตลอดเวลา</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                                 <span>ผลคะแนนและเฉลยละเอียด จะแสดงหลังจากกดยืนยันส่งข้อสอบเท่านั้น</span>
                             </div>
                         </div>
@@ -267,12 +272,11 @@ export default function MockExamMode({ userId }) {
                     </div>
                 )}
 
-                {/*  หน้า 2: กำลังทำข้อสอบ */}
                 {step === 'playing' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth > 768 ? '2fr 1fr' : '1fr', gap: '30px' }}>
+                    <div className="mock-grid fade-in">
                         <div>
                             <div style={{ marginBottom: '25px' }}>
-                                <div style={{ display: 'flex', justifyContext: 'space-between', fontSize: '14px', color: '#4B5563', marginBottom: '8px', fontWeight: '500' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#4B5563', marginBottom: '8px', fontWeight: '500' }}>
                                     <span>สนามสอบจำลอง</span>
                                     <span>ข้อที่ {currentIndex + 1} / {questions.length}</span>
                                 </div>
@@ -281,7 +285,7 @@ export default function MockExamMode({ userId }) {
                                 </div>
                             </div>
 
-                            <div style={{ background: '#FFFFFF', padding: '35px', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                            <div style={{ background: '#FFFFFF', padding: '35px 20px', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                                     <h3 style={{ margin: 0, color: '#1A365D', fontSize: '20px' }}>ข้อที่ {currentIndex + 1}</h3>
                                     <div style={{ display: 'flex', alignItems: 'center', background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '6px 14px', borderRadius: '6px', fontWeight: '500', color: timeLeft < 600 ? '#DC2626' : '#1E293B' }}>
@@ -301,7 +305,7 @@ export default function MockExamMode({ userId }) {
                                                 <input
                                                     type="radio" name="mock_option" value={option} checked={isSelected}
                                                     onChange={() => handleSelectAnswer(questions[currentIndex].id, option)}
-                                                    style={{ margin: '4px 15px 0 0', width: '18px', height: '18px', accentColor: '#1A365D', cursor: 'pointer' }}
+                                                    style={{ margin: '4px 15px 0 0', width: '18px', height: '18px', accentColor: '#1A365D', cursor: 'pointer', flexShrink: 0 }}
                                                 />
                                                 <span style={{ color: '#374151', fontSize: '15px' }}>{option}</span>
                                             </label>
@@ -310,18 +314,18 @@ export default function MockExamMode({ userId }) {
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px', borderTop: '1px solid #F3F4F6', paddingTop: '25px' }}>
-                                    <button onClick={() => setCurrentIndex(p => Math.max(0, p - 1))} disabled={currentIndex === 0} style={{ padding: '10px 20px', background: '#FFF', border: '1px solid #D1D5DB', borderRadius: '6px', cursor: currentIndex === 0 ? 'not-allowed' : 'pointer' }}>
-                                        ข้อก่อนหน้า
+                                    <button onClick={() => setCurrentIndex(p => Math.max(0, p - 1))} disabled={currentIndex === 0} style={{ padding: '10px 20px', background: '#FFF', border: '1px solid #D1D5DB', borderRadius: '6px', cursor: currentIndex === 0 ? 'not-allowed' : 'pointer', color: currentIndex === 0 ? '#9CA3AF' : '#374151' }}>
+                                        ก่อนหน้า
                                     </button>
-                                    <button onClick={() => setCurrentIndex(p => Math.min(questions.length - 1, p + 1))} disabled={currentIndex === questions.length - 1} style={{ padding: '10px 20px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', cursor: currentIndex === questions.length - 1 ? 'not-allowed' : 'pointer' }}>
-                                        ข้อถัดไป
+                                    <button onClick={() => setCurrentIndex(p => Math.min(questions.length - 1, p + 1))} disabled={currentIndex === questions.length - 1} style={{ padding: '10px 20px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', cursor: currentIndex === questions.length - 1 ? 'not-allowed' : 'pointer', opacity: currentIndex === questions.length - 1 ? 0.5 : 1 }}>
+                                        ถัดไป
                                     </button>
                                 </div>
                             </div>
                         </div>
 
                         {/* กระดาษคำตอบสลับข้อ */}
-                        <div style={{ background: '#FFFFFF', padding: '25px', borderRadius: '8px', border: '1px solid #E5E7EB', position: 'sticky', top: '20px' }}>
+                        <div style={{ background: '#FFFFFF', padding: '25px', borderRadius: '8px', border: '1px solid #E5E7EB', alignSelf: 'start', position: 'sticky', top: '20px' }}>
                             <h4 style={{ margin: '0 0 15px 0', color: '#1A365D', fontSize: '15px', fontWeight: '600' }}>กระดาษคำตอบ</h4>
                             <div className="nav-grid">
                                 {questions.map((q, idx) => (
@@ -331,7 +335,6 @@ export default function MockExamMode({ userId }) {
                                 ))}
                             </div>
                             
-                            {/* ปุ่มส่งข้อสอบ เปิด Modal */}
                             <button onClick={() => setShowSubmitModal(true)} style={{ width: '100%', marginTop: '20px', padding: '12px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
                                 ส่งข้อสอบคำนวณคะแนน
                             </button>
@@ -339,32 +342,30 @@ export default function MockExamMode({ userId }) {
                     </div>
                 )}
 
-                {/*  หน้า 3: หน้าสรุปคะแนน */}
                 {step === 'summary' && (
-                    <div className="fade-in" style={{ background: '#FFFFFF', padding: '60px 40px', borderRadius: '8px', borderTop: '6px solid #1A365D', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', maxWidth: '600px', margin: '40px auto' }}>
+                    <div className="summary-card fade-in" style={{ background: '#FFFFFF', borderRadius: '8px', borderTop: '6px solid #1A365D', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
                         <h2 style={{ color: '#1A365D', margin: '0 0 10px 0', fontSize: '24px' }}>สิ้นสุดการทดสอบ Mock Exam</h2>
                         <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '35px', margin: '20px 0' }}>
                             <div style={{ fontSize: '56px', color: '#1A365D', fontWeight: '600' }}>{score} <span style={{ fontSize: '20px', color: '#94A3B8' }}>/ {questions.length} ข้อ</span></div>
                         </div>
-                        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
-                            <button onClick={() => setStep('start')} style={{ padding: '12px 25px', background: '#FFF', border: '1px solid #D1D5DB', borderRadius: '6px', cursor: 'pointer' }}>กลับหน้าหลัก</button>
+                        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button onClick={() => setStep('start')} style={{ padding: '12px 25px', background: '#FFF', border: '1px solid #D1D5DB', borderRadius: '6px', cursor: 'pointer', color: '#374151' }}>กลับหน้าหลัก</button>
                             <button onClick={() => setStep('review')} style={{ padding: '12px 35px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>ดูเฉลยละเอียดรายข้อ</button>
                         </div>
                     </div>
                 )}
 
-                {/*  หน้า 4: หน้าเฉลยละเอียด */}
                 {step === 'review' && (
-                    <div className="fade-in" style={{ background: '#FFFFFF', padding: '40px', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
+                    <div className="review-container fade-in" style={{ background: '#FFFFFF', padding: '40px', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
                             <div>
                                 <h2 style={{ color: '#1A365D', margin: 0, fontSize: '22px' }}>เฉลยละเอียดการสอบชุดใหญ่</h2>
                                 <p style={{ color: '#6B7280', margin: '5px 0 0 0', fontSize: '14px' }}>วิเคราะห์คำตอบและเจาะลึกคำอธิบายเพื่ออุดรอยรั่ว</p>
                             </div>
-                            <button onClick={() => setStep('summary')} style={{ background: '#F3F4F6', border: '1px solid #E5E7EB', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>กลับ</button>
+                            <button onClick={() => setStep('summary')} style={{ background: '#F3F4F6', border: '1px solid #E5E7EB', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', color: '#4B5563', height: 'fit-content' }}>กลับ</button>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '25px' }}>
+                        <div className="filter-group">
                             <button className={`filter-tab ${reviewFilter === 'all' ? 'active' : ''}`} onClick={() => setReviewFilter('all')}>ทั้งหมด ({questions.length})</button>
                             <button className={`filter-tab ${reviewFilter === 'correct' ? 'active' : ''}`} onClick={() => setReviewFilter('correct')}>เฉพาะข้อที่ถูก ({score})</button>
                             <button className={`filter-tab ${reviewFilter === 'incorrect' ? 'active' : ''}`} onClick={() => setReviewFilter('incorrect')}>เฉพาะข้อที่ผิด ({questions.length - score})</button>
@@ -376,19 +377,19 @@ export default function MockExamMode({ userId }) {
                                 const userAns = answers[q.id];
 
                                 return (
-                                    <div key={q.id} style={{ padding: '24px', borderRadius: '6px', borderLeft: `4px solid ${isCorrect ? '#10B981' : '#EF4444'}`, background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                                    <div key={q.id} style={{ padding: '24px', borderRadius: '6px', borderLeft: `4px solid ${isCorrect ? '#10B981' : '#EF4444'}`, background: '#F8FAFC', border: '1px solid #E2E8F0', borderTop: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
                                         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                                            <div style={{ fontWeight: '600', color: isCorrect ? '#059669' : '#B91C1C', fontSize: '16px' }}>ข้อ {q.originalIndex}.</div>
-                                            <div style={{ color: '#1F2937', fontWeight: '500' }}>{q.question_text}</div>
+                                            <div style={{ fontWeight: '600', color: isCorrect ? '#059669' : '#B91C1C', fontSize: '16px', minWidth: '45px' }}>ข้อ {q.originalIndex}.</div>
+                                            <div style={{ color: '#1F2937', fontWeight: '500', lineHeight: '1.6' }}>{q.question_text}</div>
                                         </div>
                                         
-                                        <div style={{ marginLeft: '50px', fontSize: '14px', color: '#4B5563' }}>
+                                        <div style={{ paddingLeft: '57px', fontSize: '14px', color: '#4B5563' }}>
                                             <div style={{ margin: '4px 0' }}>คำตอบของคุณ: <span style={{ color: isCorrect ? '#059669' : '#B91C1C', fontWeight: '600' }}>{userAns || 'ไม่ได้ฝนคำตอบ'}</span></div>
                                             {!isCorrect && <div style={{ margin: '4px 0' }}>เฉลยที่ถูกต้อง: <span style={{ color: '#059669', fontWeight: '600' }}>{q.correct_answer}</span></div>}
                                             
                                             <div style={{ marginTop: '15px', background: 'white', padding: '15px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
                                                 <div style={{ color: '#1A365D', fontWeight: '600', marginBottom: '5px' }}>คำอธิบาย:</div>
-                                                <div>{q.explanation || 'ผู้เขียนข้อสอบไม่ได้ระบุคำอธิบาย'}</div>
+                                                <div style={{ lineHeight: '1.6' }}>{q.explanation || 'ผู้เขียนข้อสอบไม่ได้ระบุคำอธิบาย'}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -397,9 +398,9 @@ export default function MockExamMode({ userId }) {
                         </div>
 
                         {totalReviewPages > 1 && (
-                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '35px', borderTop: '1px solid #E5E7EB', paddingTop: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '35px', borderTop: '1px solid #E5E7EB', paddingTop: '20px', flexWrap: 'wrap' }}>
                                 <button className="btn-page-nav" onClick={() => setReviewPage(p => Math.max(1, p - 1))} disabled={reviewPage === 1}>
-                                    ◀ ย้อนกลับ
+                                    ก่อนหน้า
                                 </button>
                                 {[...Array(totalReviewPages)].map((_, idx) => (
                                     <button key={idx} className={`btn-page-num ${reviewPage === idx + 1 ? 'active' : ''}`} onClick={() => setReviewPage(idx + 1)}>
@@ -407,7 +408,7 @@ export default function MockExamMode({ userId }) {
                                     </button>
                                 ))}
                                 <button className="btn-page-nav" onClick={() => setReviewPage(p => Math.min(totalReviewPages, p + 1))} disabled={reviewPage === totalReviewPages}>
-                                    ถัดไป ▶
+                                    ถัดไป
                                 </button>
                             </div>
                         )}
