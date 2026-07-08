@@ -12,7 +12,7 @@ export default function StudyPlanner({ userId, onStartPractice }) {
     const fetchPlanner = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`http://localhost:5000/api/planner?user_id=${userId}`);
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/planner?user_id=${userId}`);
             const data = await res.json();
 
             if(res.ok) {
@@ -47,7 +47,7 @@ export default function StudyPlanner({ userId, onStartPractice }) {
         const target = inputDate || plannerData.target_exam_date; 
         
         try {
-            const res = await fetch(`http://localhost:5000/api/planner/generate`, {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/planner/generate`, {
                 method: 'POST',
                 headers: {'Content-Type' : 'application/json'},
                 body: JSON.stringify({ user_id: userId, target_date: target })

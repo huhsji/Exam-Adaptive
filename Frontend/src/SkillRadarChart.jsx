@@ -15,7 +15,7 @@ export default function SkillRadarChart({ userId, category }) {
     useEffect(() => {
         const fetchRadarData = async () => {
             try {
-                const res = await fetch(`http://localhost:5000/api/practice/radar-chart?user_id=${userId}&category=${category}`);
+                const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/practice/radar-chart?user_id=${userId}&category=${category}`);
                 const result = await res.json();
                 if (res.ok) setData(result);
             } catch (error) {

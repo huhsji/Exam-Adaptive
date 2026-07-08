@@ -20,7 +20,7 @@ const Pretest = ({ userId, onComplete }) => {
     const fetchParts = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/pretest/parts');
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/parts`);
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
             
@@ -40,7 +40,7 @@ const Pretest = ({ userId, onComplete }) => {
         setLoading(true);
         setSelectedOption('');
         try {
-            const res = await fetch(`http://localhost:5000/api/pretest/question/${partId}/${difficultyLevel}`);
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/question/${partId}/${difficultyLevel}`);
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
             
@@ -85,7 +85,7 @@ const Pretest = ({ userId, onComplete }) => {
     const submitResults = async (finalResults, isSkip = false) => {
         setIsSubmitting(true);
         try {
-            const res = await fetch('http://localhost:5000/api/pretest/submit', {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/submit`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

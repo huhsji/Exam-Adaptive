@@ -16,7 +16,7 @@ export default function AuthPage({ onLoginSuccess }) {
         const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
 
         try {
-            const res = await fetch(`http://localhost:5000${endpoint}`, {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)

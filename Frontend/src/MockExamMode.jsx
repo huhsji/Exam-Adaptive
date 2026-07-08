@@ -40,7 +40,8 @@ export default function MockExamMode({ userId }) {
 
     const startExam = async () => {
         try {
-            const res = await fetch(`http://localhost:5000/mock/generate`, {
+            
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/mock/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: userId })
@@ -89,7 +90,8 @@ export default function MockExamMode({ userId }) {
         });
 
         try {
-            await fetch(`http://localhost:5000/mock/submit`, {
+            
+            await fetch(`${import.meta.env.VITE_API_BASE_URL}/mock/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 

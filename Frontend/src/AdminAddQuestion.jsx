@@ -28,7 +28,8 @@ function AdminAddQuestion() {
     useEffect(() => {
         const fetchParts = async() => {
             try {
-                const response = await axios.get('http://localhost:5000/api/admin/parts');
+                
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/admin/parts`);
                 setPartList(response.data);
             } catch (error) {
                 console.error("Error fetching parts:", error);
@@ -60,7 +61,8 @@ function AdminAddQuestion() {
         });
 
         try {
-            const response = await axios.post('http://localhost:5000/api/admin/questions', submitData, {
+           
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/admin/questions`, submitData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
@@ -95,7 +97,8 @@ function AdminAddQuestion() {
         excelData.append('excel_file', excelFile);
 
         try {
-            const response = await axios.post('http://localhost:5000/api/admin/upload-excel', excelData, {
+            //  เปลี่ยน URL เป็น Environment Variable
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/admin/upload-excel`, excelData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert(response.data.message);
@@ -374,7 +377,7 @@ function AdminAddQuestion() {
                     </div>
 
                     <button type="submit" style={{ width: '100%', padding: '16px', backgroundColor: '#1A365D', color: '#FFFFFF', fontSize: '18px', fontWeight: '600', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 6px rgba(26, 54, 93, 0.2)', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.backgroundColor = '#2A4365'} onMouseOut={(e) => e.target.style.backgroundColor = '#1A365D'}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}><path d="M19 21H5a2 2 0 0 1-2 2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                         บันทึกข้อสอบเข้าระบบ
                     </button>
                 </form>

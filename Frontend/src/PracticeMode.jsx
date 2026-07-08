@@ -64,7 +64,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         const fetchPartsOnRefresh = async () => {
             if (step === 'select_part' && selectedCategory && parts.length === 0) {
                 try {
-                    const res = await fetch(`http://localhost:5000/api/practice/parts?category=${selectedCategory}`);
+                    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/practice/parts?category=${selectedCategory}`);
                     const data = await res.json();
                     setParts(data);
                 } catch (error) {
@@ -78,7 +78,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const res = await fetch(`http://localhost:5000/api/practice/categories?user_id=${userId}`);
+                const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/practice/categories?user_id=${userId}`);
                 const data = await res.json();
                 if (res.ok) {
                     const filteredCategories = data.filter(cat => cat.name !== 'Mock Exam');
@@ -96,7 +96,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
             if (targetPartId) {
                 if (step === 'playing' || step === 'summary') return;
                 try {
-                    const res = await fetch(`http://localhost:5000/api/practice/part-info?part_id=${targetPartId}`);
+                    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/practice/part-info?part_id=${targetPartId}`);
                     const data = await res.json();
                     if (res.ok && data) {
                         setSelectedPart(data); 
@@ -114,7 +114,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
     const fetchQuestion = async (currentSessionId, currentPartId) => {
         setSelectedAnswer(''); 
         try {
-            const res = await fetch(`http://localhost:5000/api/practice/question?user_id=${userId}&part_id=${currentPartId}&session_id=${currentSessionId}`);
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/practice/question?user_id=${userId}&part_id=${currentPartId}&session_id=${currentSessionId}`);
             const data = await res.json();
 
             if (!res.ok) {
@@ -170,7 +170,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
     const handleSelectCategory = async (categoryName) => {
         setSelectedCategory(categoryName);
         try {
-            const res = await fetch(`http://localhost:5000/api/practice/parts?category=${categoryName}`);
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/practice/parts?category=${categoryName}`);
             const data = await res.json();
             setParts(data);
             setStep('select_part');
@@ -188,7 +188,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         setShowResumeModal(false);
         try {
             setExamHistory([]); 
-            const res = await fetch('http://localhost:5000/api/practice/start', {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/practice/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: userId, part_id: selectedPart.id }) 
@@ -222,7 +222,7 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
         if (!selectedAnswer) return alert("กรุณาเลือกคำตอบก่อนดำเนินการต่อครับ");
 
         try {
-            const res = await fetch('http://localhost:5000/api/practice/submit', {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/practice/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
