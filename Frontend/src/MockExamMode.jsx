@@ -119,10 +119,10 @@ export default function MockExamMode({ userId }) {
         return cleanUserAnswer.startsWith(correctAnswer) || cleanUserAnswer === correctAnswer;
     };
 
-    // ฟังก์ชันสำหรับกดเปลี่ยนข้อ (พอกดเปลี่ยนแล้ว ให้ซ่อนกระดาษคำตอบบนมือถือด้วย)
+    // ฟังก์ชันสำหรับกดเปลี่ยนข้อ
     const handleNavigateQuestion = (idx) => {
         setCurrentIndex(idx);
-        setIsMobileSheetOpen(false);
+        setIsMobileSheetOpen(false); // ปิด Popup ตอนกดเลือกข้อ
     };
 
     const answeredCount = Object.keys(answers).length;
@@ -171,7 +171,7 @@ export default function MockExamMode({ userId }) {
                 .btn-page-num.active { background: #1A365D; color: white; border-color: #1A365D; }
                 .btn-page-num:disabled, .btn-page-nav:disabled { opacity: 0.4; cursor: not-allowed; }
 
-                .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; animation: fadeIn 0.2s ease; }
+                .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 99999; animation: fadeIn 0.2s ease; }
                 .modal-box { background: white; padding: 36px 32px; border-radius: 12px; max-width: 450px; width: 95%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25); animation: slideUp 0.3s ease; border-top: 6px solid #1A365D; }
 
                 ::-webkit-scrollbar { width: 6px; }
@@ -183,24 +183,23 @@ export default function MockExamMode({ userId }) {
                 .summary-card { max-width: 600px; margin: 40px auto; padding: 60px 40px; }
                 .start-card { max-width: 700px; margin: 40px auto; padding: 50px; }
                 
-                /* ค่าเริ่มต้นสำหรับ Desktop (ไม่แสดงปุ่มมือถือ, แสดงกล่องตามปกติ) */
+                /* ค่าเริ่มต้นสำหรับ Desktop */
                 .mobile-toggle-btn { display: none; }
                 .answer-sheet-overlay { display: block; }
                 .overlay-backdrop { display: none; }
                 .close-sheet-btn { display: none; }
                 .answer-sheet-box { background: #FFFFFF; padding: 25px; border-radius: 8px; border: 1px solid #E5E7EB; align-self: start; position: sticky; top: 20px; }
                 
+                /* การจัดเรียงบนหน้าจอมือถือ (Responsive) */
                 @media (max-width: 768px) {
-                    /* เอา column-reverse ออก เพื่อให้โจทย์อยู่ด้านบนสุด */
-                    .mock-grid { grid-template-columns: 1fr; display: block; }
-                    .nav-grid { max-height: 250px; }
+                    .mock-grid { grid-template-columns: 1fr; display: flex; flex-direction: column; }
                     .modal-box { padding: 25px 20px; }
                     .summary-card { padding: 30px 20px; margin: 20px auto; }
                     .start-card { padding: 30px 20px; }
                     .start-card button { width: 100%; }
                     .review-container { padding: 20px; }
 
-                    /* สไตล์ปุ่ม 3 ขีดลอยมุมล่างขวาบนมือถือ */
+                    /* ปุ่ม 3 ขีด มุมขวาล่าง */
                     .mobile-toggle-btn {
                         display: flex; align-items: center; justify-content: center;
                         position: fixed; bottom: 24px; right: 24px; z-index: 900;
@@ -210,33 +209,42 @@ export default function MockExamMode({ userId }) {
                     }
                     .mobile-toggle-btn:active { transform: scale(0.95); }
 
-                    /* ซ่อนกระดาษคำตอบเป็นค่าเริ่มต้นบนมือถือ */
+                    /* ซ่อนกระดาษคำตอบในภาวะปกติ */
                     .answer-sheet-overlay { display: none; }
                     
-                    /* เมื่อกดเปิดกระดาษคำตอบบนมือถือ (เปลี่ยนเป็น Bottom Sheet) */
+                    /* เมื่อ Popup เปิดขึ้นมา */
                     .answer-sheet-overlay.is-open {
                         display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                        z-index: 1000; align-items: flex-end; justify-content: center;
+                        z-index: 99999; /* ปรับให้สูงปรี๊ดเพื่อบังแถบเมนูด้านบนมิด */
+                        align-items: flex-end; justify-content: center;
                         animation: fadeIn 0.2s ease;
                     }
                     
-                    /* ฉากหลังสีดำจางๆ บนมือถือ */
-                    .overlay-backdrop { display: block; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.65); }
+                    /* พื้นหลังสีดำเบลอๆ */
+                    .overlay-backdrop { display: block; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: -1; }
                     
-                    /* กล่องกระดาษคำตอบบนมือถือ เลื่อนขึ้นจากข้างล่าง */
+                    /* กล่องกระดาษคำตอบสีขาว */
                     .answer-sheet-box {
-                        width: 100%; position: relative; top: 0;
+                        width: 100%; position: relative; top: auto;
                         border-radius: 20px 20px 0 0; border: none;
-                        max-height: 85vh; padding: 25px 20px 35px 20px;
+                        max-height: 85vh; padding: 25px 20px;
                         animation: slideUp 0.3s ease;
+                        display: flex; flex-direction: column; /* เพื่อให้เลื่อนเฉพาะตรงกลาง */
+                        background: #FFFFFF;
+                        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
                     }
                     
-                    /* ปุ่มปิดกระดาษคำตอบ (กากบาท) แสดงเฉพาะมือถือ */
+                    /* ให้ตัวตารางขยับเลื่อนได้ แต่ปุ่มส่งข้อสอบจะโดนล็อคอยู่ด้านล่าง */
+                    .nav-grid {
+                        flex: 1; overflow-y: auto; max-height: unset; 
+                        margin-bottom: 20px; padding-bottom: 10px;
+                    }
+                    
                     .close-sheet-btn { display: block; color: #64748B; padding: 5px; }
                 }
             `}</style>
 
-            {/* Modal ยืนยันการส่งข้อสอบ (คงเดิม) */}
+            {/* Modal ยืนยันการส่งข้อสอบ */}
             {showSubmitModal && (
                 <div className="modal-overlay">
                     <div className="modal-box">
@@ -395,7 +403,7 @@ export default function MockExamMode({ userId }) {
                                     ))}
                                 </div>
                                 
-                                <button onClick={() => { setIsMobileSheetOpen(false); setShowSubmitModal(true); }} style={{ width: '100%', marginTop: '20px', padding: '12px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                                <button onClick={() => { setIsMobileSheetOpen(false); setShowSubmitModal(true); }} style={{ width: '100%', padding: '12px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', transition: 'background 0.2s', marginTop: 'auto' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
                                     ส่งข้อสอบคำนวณคะแนน
                                 </button>
                             </div>

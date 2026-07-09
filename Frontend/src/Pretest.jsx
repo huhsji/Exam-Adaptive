@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-const Pretest = ({ userId, onComplete }) => {
+
+const Pretest = ({ userId, onComplete, isRetake = false }) => {
     const [viewState, setViewState] = useState('loading'); 
     const [parts, setParts] = useState([]);
     const [currentPartIndex, setCurrentPartIndex] = useState(0);
@@ -17,22 +18,25 @@ const Pretest = ({ userId, onComplete }) => {
         checkUserStatusAndFetchParts();
     }, []);
 
-    //  เช็กประวัติก่อน ถ้าเคยทำแล้วให้ข้ามเลย ถ้ายังค่อยดึงข้อสอบ
+    // เช็กประวัติก่อน ถ้าเคยทำแล้วให้ข้ามเลย ถ้ายังค่อยดึงข้อสอบ
     const checkUserStatusAndFetchParts = async () => {
         setLoading(true);
         try {
-            // เช็กกับหลังบ้านว่ามีสกิลหรือยัง
-            const checkRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/check/${userId}`);
-            if (checkRes.ok) {
-                const statusData = await checkRes.json();
-                if (statusData.hasSkills) {
-                    // ถ้ามีประวัติแล้ว ปิดหน้า Pre-test ไปเลย ไม่ต้องโชว์
-                    if (onComplete) onComplete();
-                    return; 
+            // 
+            if (!isRetake) {
+                // เช็กกับหลังบ้านว่ามีสกิลหรือยัง
+                const checkRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/check/${userId}`);
+                if (checkRes.ok) {
+                    const statusData = await checkRes.json();
+                    if (statusData.hasSkills) {
+                        // ถ้ามีประวัติแล้ว ปิดหน้า Pre-test ไปเลย ไม่ต้องโชว์
+                        if (onComplete) onComplete();
+                        return; 
+                    }
                 }
             }
             
-            // ถ้าเป็นผู้ใช้ใหม่ ค่อยดึงข้อสอบ
+            // ถ้าเป็นผู้ใช้ใหม่ หรือ กดทำใหม่ ค่อยดึงข้อสอบ
             const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/parts`);
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
@@ -40,7 +44,7 @@ const Pretest = ({ userId, onComplete }) => {
             if (Array.isArray(data) && data.length > 0) {
                 setParts(data);
                 fetchQuestion(data[0].id, 3);
-                setViewState('intro'); // โชว์หน้า Intro
+                setViewState('intro'); 
             } else {
                 if (onComplete) onComplete();
             }
@@ -129,7 +133,7 @@ const Pretest = ({ userId, onComplete }) => {
         }
     };
 
-    //  "ข้ามไปก่อน" (ทำหน้าที่ตั้งค่า Level 1 ให้เฉพาะคนที่เป็น User ใหม่)
+    // ข้ามไปก่อน ทำหน้าที่ตั้งค่า Level 1 ให้เฉพาะคนที่เป็น User ใหม่
     const handleSkip = () => {
         if (window.confirm("คุณต้องการข้ามไปก่อนใช่หรือไม่?\n(ระบบจะตั้งค่าเริ่มต้นเป็น Level 1 และคุณสามารถกดกลับมาทำแบบประเมินใหม่ได้ที่หน้าหลักเสมอครับ)")) {
             if (parts.length > 0) {
@@ -207,7 +211,6 @@ const Pretest = ({ userId, onComplete }) => {
             {viewState === 'intro' && (
                 <div className="modal-overlay">
                     <div className="modal-box">
-                        {/* เปลี่ยนปุ่มกากบาทให้ใช้ handleCloseModal แทน */}
                         <button onClick={handleCloseModal} className="btn-close" title="ปิดหน้าต่าง">✕</button>
                         <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
