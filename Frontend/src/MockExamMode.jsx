@@ -172,7 +172,10 @@ export default function MockExamMode({ userId }) {
                         display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;
                     }
                     .mobile-portal-close {
-                        background: none; border: none; fontSize: 28px; line-height: 1; cursor: pointer; color: #64748B; padding: 5px;
+                        background: none; border: none; font-size: 36px; line-height: 1; cursor: pointer; color: #64748B; padding: 5px 10px; margin-right: -10px; display: flex; align-items: center; justify-content: center;
+                    }
+                    .mobile-portal-close:hover {
+                        color: #1E293B;
                     }
                 `}</style>
                 <div className="mobile-portal-backdrop" onClick={() => setIsMobileSheetOpen(false)}></div>
