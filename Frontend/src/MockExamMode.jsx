@@ -12,6 +12,9 @@ export default function MockExamMode({ userId }) {
 
     const [showSubmitModal, setShowSubmitModal] = useState(false);
     const [reviewPage, setReviewPage] = useState(1);
+    
+    // State สำหรับเปิด/ปิด กระดาษคำตอบบนมือถือ
+    const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -40,7 +43,6 @@ export default function MockExamMode({ userId }) {
 
     const startExam = async () => {
         try {
-            
             const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/mock/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -60,6 +62,7 @@ export default function MockExamMode({ userId }) {
             setTimeLeft(10800); 
             setCurrentIndex(0);
             setStep('playing');
+            setIsMobileSheetOpen(false);
             
         } catch (error) {
             console.error("Error fetching mock exam:", error);
@@ -90,7 +93,6 @@ export default function MockExamMode({ userId }) {
         });
 
         try {
-            
             await fetch(`${import.meta.env.VITE_API_BASE_URL}/mock/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -115,6 +117,12 @@ export default function MockExamMode({ userId }) {
         const cleanUserAnswer = userAnswer.trim();
         const correctAnswer = q.correct_answer ? q.correct_answer.trim() : '';
         return cleanUserAnswer.startsWith(correctAnswer) || cleanUserAnswer === correctAnswer;
+    };
+
+    // ฟังก์ชันสำหรับกดเปลี่ยนข้อ (พอกดเปลี่ยนแล้ว ให้ซ่อนกระดาษคำตอบบนมือถือด้วย)
+    const handleNavigateQuestion = (idx) => {
+        setCurrentIndex(idx);
+        setIsMobileSheetOpen(false);
     };
 
     const answeredCount = Object.keys(answers).length;
@@ -172,21 +180,63 @@ export default function MockExamMode({ userId }) {
                 ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
                 .mock-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
-                .filter-group { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
                 .summary-card { max-width: 600px; margin: 40px auto; padding: 60px 40px; }
                 .start-card { max-width: 700px; margin: 40px auto; padding: 50px; }
                 
+                /* ค่าเริ่มต้นสำหรับ Desktop (ไม่แสดงปุ่มมือถือ, แสดงกล่องตามปกติ) */
+                .mobile-toggle-btn { display: none; }
+                .answer-sheet-overlay { display: block; }
+                .overlay-backdrop { display: none; }
+                .close-sheet-btn { display: none; }
+                .answer-sheet-box { background: #FFFFFF; padding: 25px; border-radius: 8px; border: 1px solid #E5E7EB; align-self: start; position: sticky; top: 20px; }
+                
                 @media (max-width: 768px) {
-                    .mock-grid { grid-template-columns: 1fr; display: flex; flex-direction: column-reverse; }
+                    /* เอา column-reverse ออก เพื่อให้โจทย์อยู่ด้านบนสุด */
+                    .mock-grid { grid-template-columns: 1fr; display: block; }
                     .nav-grid { max-height: 250px; }
                     .modal-box { padding: 25px 20px; }
                     .summary-card { padding: 30px 20px; margin: 20px auto; }
                     .start-card { padding: 30px 20px; }
                     .start-card button { width: 100%; }
                     .review-container { padding: 20px; }
+
+                    /* สไตล์ปุ่ม 3 ขีดลอยมุมล่างขวาบนมือถือ */
+                    .mobile-toggle-btn {
+                        display: flex; align-items: center; justify-content: center;
+                        position: fixed; bottom: 24px; right: 24px; z-index: 900;
+                        background: #1A365D; color: white; border: none; border-radius: 50%;
+                        width: 56px; height: 56px; box-shadow: 0 4px 12px rgba(26, 54, 93, 0.4);
+                        cursor: pointer; transition: transform 0.2s;
+                    }
+                    .mobile-toggle-btn:active { transform: scale(0.95); }
+
+                    /* ซ่อนกระดาษคำตอบเป็นค่าเริ่มต้นบนมือถือ */
+                    .answer-sheet-overlay { display: none; }
+                    
+                    /* เมื่อกดเปิดกระดาษคำตอบบนมือถือ (เปลี่ยนเป็น Bottom Sheet) */
+                    .answer-sheet-overlay.is-open {
+                        display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                        z-index: 1000; align-items: flex-end; justify-content: center;
+                        animation: fadeIn 0.2s ease;
+                    }
+                    
+                    /* ฉากหลังสีดำจางๆ บนมือถือ */
+                    .overlay-backdrop { display: block; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.65); }
+                    
+                    /* กล่องกระดาษคำตอบบนมือถือ เลื่อนขึ้นจากข้างล่าง */
+                    .answer-sheet-box {
+                        width: 100%; position: relative; top: 0;
+                        border-radius: 20px 20px 0 0; border: none;
+                        max-height: 85vh; padding: 25px 20px 35px 20px;
+                        animation: slideUp 0.3s ease;
+                    }
+                    
+                    /* ปุ่มปิดกระดาษคำตอบ (กากบาท) แสดงเฉพาะมือถือ */
+                    .close-sheet-btn { display: block; color: #64748B; padding: 5px; }
                 }
             `}</style>
 
+            {/* Modal ยืนยันการส่งข้อสอบ (คงเดิม) */}
             {showSubmitModal && (
                 <div className="modal-overlay">
                     <div className="modal-box">
@@ -276,6 +326,7 @@ export default function MockExamMode({ userId }) {
 
                 {step === 'playing' && (
                     <div className="mock-grid fade-in">
+                        {/* ฝั่งซ้าย: แสดงคำถาม */}
                         <div>
                             <div style={{ marginBottom: '25px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#4B5563', marginBottom: '8px', fontWeight: '500' }}>
@@ -326,21 +377,38 @@ export default function MockExamMode({ userId }) {
                             </div>
                         </div>
 
-                        {/* กระดาษคำตอบสลับข้อ */}
-                        <div style={{ background: '#FFFFFF', padding: '25px', borderRadius: '8px', border: '1px solid #E5E7EB', alignSelf: 'start', position: 'sticky', top: '20px' }}>
-                            <h4 style={{ margin: '0 0 15px 0', color: '#1A365D', fontSize: '15px', fontWeight: '600' }}>กระดาษคำตอบ</h4>
-                            <div className="nav-grid">
-                                {questions.map((q, idx) => (
-                                    <button key={idx} onClick={() => setCurrentIndex(idx)} className={`btn-nav ${answers[q.id] ? 'answered' : ''} ${currentIndex === idx ? 'current' : ''}`}>
-                                        {idx + 1}
+                        {/* ฝั่งขวา (หรือ Popup ในมือถือ): กระดาษคำตอบสลับข้อ */}
+                        <div className={`answer-sheet-overlay ${isMobileSheetOpen ? 'is-open' : ''}`}>
+                            <div className="overlay-backdrop" onClick={() => setIsMobileSheetOpen(false)}></div>
+                            <div className="answer-sheet-box">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                    <h4 style={{ margin: '0', color: '#1A365D', fontSize: '15px', fontWeight: '600' }}>กระดาษคำตอบ</h4>
+                                    <button className="close-sheet-btn" onClick={() => setIsMobileSheetOpen(false)} style={{ background: 'none', border: 'none', fontSize: '28px', lineHeight: '1', cursor: 'pointer' }}>
+                                        &times;
                                     </button>
-                                ))}
+                                </div>
+                                <div className="nav-grid">
+                                    {questions.map((q, idx) => (
+                                        <button key={idx} onClick={() => handleNavigateQuestion(idx)} className={`btn-nav ${answers[q.id] ? 'answered' : ''} ${currentIndex === idx ? 'current' : ''}`}>
+                                            {idx + 1}
+                                        </button>
+                                    ))}
+                                </div>
+                                
+                                <button onClick={() => { setIsMobileSheetOpen(false); setShowSubmitModal(true); }} style={{ width: '100%', marginTop: '20px', padding: '12px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                                    ส่งข้อสอบคำนวณคะแนน
+                                </button>
                             </div>
-                            
-                            <button onClick={() => setShowSubmitModal(true)} style={{ width: '100%', marginTop: '20px', padding: '12px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
-                                ส่งข้อสอบคำนวณคะแนน
-                            </button>
                         </div>
+
+                        {/* ปุ่ม Hamburger (3 ขีด) แสดงเฉพาะบนมือถือ */}
+                        <button className="mobile-toggle-btn" onClick={() => setIsMobileSheetOpen(true)}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </button>
                     </div>
                 )}
 

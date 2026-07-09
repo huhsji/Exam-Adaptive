@@ -283,7 +283,7 @@ function App() {
                     <div style={{ background: '#F0FDF4', padding: '16px', borderRadius: '50%', marginBottom: '20px' }}>
                       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                     </div>
-                    <h2 style={{ color: '#1A365D', margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600' }}>ตารางอัจฉริยะ (Planner)</h2>
+                    <h2 style={{ color: '#1A365D', margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600' }}>แผนการเตรียมสอบ (Planner)</h2>
                     <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>วิเคราะห์จุดอ่อนและจัดตารางติวให้อัตโนมัติ พร้อมนับถอยหลังสู่วันสอบ</p>
                   </div>
                 </div>

@@ -33,7 +33,7 @@ export default function StudyPlanner({ userId, onStartPractice }) {
             setModalFeedback({
                 type: 'warning',
                 title: 'กรุณาระบุวันสอบเป้าหมาย',
-                message: 'โปรดเลือกวันที่คุณคาดว่าจะเข้าสอบ ก.พ. ก่อนครับ เพื่อให้ระบบ AI คำนวณระยะเวลาและวางแผนการติวได้อย่างแม่นยำ'
+                message: 'โปรดเลือกวันที่คุณคาดว่าจะเข้าสอบ ก.พ. ก่อนครับ เพื่อให้ระบบคำนวณระยะเวลาและวางแผนการติวได้อย่างแม่นยำ'
             });
             return;
         }
@@ -57,7 +57,7 @@ export default function StudyPlanner({ userId, onStartPractice }) {
             if (res.ok) {
                 setModalFeedback({
                     type: 'success',
-                    title: 'จัดตารางติวเข้มสำเร็จ!',
+                    title: 'จัดตารางติวเข้มสำเร็จ',
                     message: `${data.message} (ระบบได้วิเคราะห์จุดอ่อนล่าสุดและจัดตารางให้คุณทั้งหมด ${data.days_planned} วันเรียบร้อยแล้ว)`
                 });
                 fetchPlanner();
@@ -137,7 +137,7 @@ export default function StudyPlanner({ userId, onStartPractice }) {
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                         </div>
                         
-                        <h3 style={{ margin: '0 0 12px 0', color: '#1A365D', fontSize: '22px', fontWeight: '600' }}>ยืนยันการจัดตารางติวเข้มใหม่</h3>
+                        <h3 style={{ margin: '0 0 12px 0', color: '#1A365D', fontSize: '22px', fontWeight: '600' }}>ยืนยันการจัดตารางติวใหม่</h3>
                         <p style={{ color: '#4B5563', fontSize: '15px', lineHeight: '1.6', margin: '0 0 28px 0' }}>
                             ระบบจะทำการวิเคราะห์ความแม่นยำและจุดอ่อนล่าสุดของคุณ เพื่อสร้างตารางอ่านหนังสือและแบบฝึกหัดชุดใหม่ คุณต้องการดำเนินการต่อหรือไม่ครับ?
                         </p>
@@ -176,7 +176,7 @@ export default function StudyPlanner({ userId, onStartPractice }) {
             )}
 
             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                <h2 style={{ color: '#1A365D', margin: '0 0 10px 0', fontSize: '28px', fontWeight: '600' }}>ตารางติวเข้มอัจฉริยะ (Smart Planner)</h2>
+                <h2 style={{ color: '#1A365D', margin: '0 0 10px 0', fontSize: '28px', fontWeight: '600' }}>แผนการเตรียมสอบ (Planner)</h2>
                 <p style={{ color: '#6B7280', fontSize: '16px', margin: 0 }}>ทำข้อสอบตามแผนที่ระบบจัดให้ เพื่อดันคะแนนจุดอ่อนให้ผ่านเกณฑ์</p>
             </div>
 

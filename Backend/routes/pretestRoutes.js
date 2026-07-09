@@ -82,4 +82,22 @@ router.post('/submit', async (req, res) => {
     }
 });
 
+//  เช็กว่าผู้ใช้คนนี้เคยทำแบบทดสอบหรือมีข้อมูลสกิลแล้วหรือยัง
+router.get('/check/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const [rows] = await db.execute(`
+            SELECT COUNT(*) as count 
+            FROM user_skills 
+            WHERE user_id = ?
+        `, [userId]);
+        
+        // ถ้า count > 0 แปลว่าเคยทำแล้ว ส่งสถานะ hasSkills: true กลับไป
+        res.status(200).json({ hasSkills: rows[0].count > 0 });
+    } catch (error) {
+        console.error("Error checking user skills:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 module.exports = router;

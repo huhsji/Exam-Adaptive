@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 const Pretest = ({ userId, onComplete }) => {
-    const [viewState, setViewState] = useState('intro'); 
+    const [viewState, setViewState] = useState('loading'); 
     const [parts, setParts] = useState([]);
     const [currentPartIndex, setCurrentPartIndex] = useState(0);
     const [step, setStep] = useState(1);
@@ -14,12 +14,25 @@ const Pretest = ({ userId, onComplete }) => {
     const [selectedOption, setSelectedOption] = useState('');
 
     useEffect(() => {
-        fetchParts();
+        checkUserStatusAndFetchParts();
     }, []);
 
-    const fetchParts = async () => {
+    //  เช็กประวัติก่อน ถ้าเคยทำแล้วให้ข้ามเลย ถ้ายังค่อยดึงข้อสอบ
+    const checkUserStatusAndFetchParts = async () => {
         setLoading(true);
         try {
+            // เช็กกับหลังบ้านว่ามีสกิลหรือยัง
+            const checkRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/check/${userId}`);
+            if (checkRes.ok) {
+                const statusData = await checkRes.json();
+                if (statusData.hasSkills) {
+                    // ถ้ามีประวัติแล้ว ปิดหน้า Pre-test ไปเลย ไม่ต้องโชว์
+                    if (onComplete) onComplete();
+                    return; 
+                }
+            }
+            
+            // ถ้าเป็นผู้ใช้ใหม่ ค่อยดึงข้อสอบ
             const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/parts`);
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
@@ -27,11 +40,14 @@ const Pretest = ({ userId, onComplete }) => {
             if (Array.isArray(data) && data.length > 0) {
                 setParts(data);
                 fetchQuestion(data[0].id, 3);
+                setViewState('intro'); // โชว์หน้า Intro
             } else {
-                setLoading(false);
+                if (onComplete) onComplete();
             }
         } catch (error) {
-            console.error("Error fetching parts:", error);
+            console.error("Error during init:", error);
+            if (onComplete) onComplete();
+        } finally {
             setLoading(false);
         }
     };
@@ -113,6 +129,7 @@ const Pretest = ({ userId, onComplete }) => {
         }
     };
 
+    //  "ข้ามไปก่อน" (ทำหน้าที่ตั้งค่า Level 1 ให้เฉพาะคนที่เป็น User ใหม่)
     const handleSkip = () => {
         if (window.confirm("คุณต้องการข้ามไปก่อนใช่หรือไม่?\n(ระบบจะตั้งค่าเริ่มต้นเป็น Level 1 และคุณสามารถกดกลับมาทำแบบประเมินใหม่ได้ที่หน้าหลักเสมอครับ)")) {
             if (parts.length > 0) {
@@ -121,6 +138,10 @@ const Pretest = ({ userId, onComplete }) => {
                 if (onComplete) onComplete();
             }
         }
+    };
+
+    const handleCloseModal = () => {
+        if (onComplete) onComplete();
     };
 
     const handleExitDuringExam = () => {
@@ -143,6 +164,8 @@ const Pretest = ({ userId, onComplete }) => {
     const answeredQuestions = (currentPartIndex * 2) + (step - 1);
     const progressPercent = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
     const choiceMap = { 'A': 'ก.', 'B': 'ข.', 'C': 'ค.', 'D': 'ง.' };
+
+    if (viewState === 'loading') return null; 
 
     return (
         <div style={{ fontFamily: '"Kanit", sans-serif' }}>
@@ -184,7 +207,8 @@ const Pretest = ({ userId, onComplete }) => {
             {viewState === 'intro' && (
                 <div className="modal-overlay">
                     <div className="modal-box">
-                        <button onClick={handleSkip} className="btn-close" title="ข้ามไปก่อน">✕</button>
+                        {/* เปลี่ยนปุ่มกากบาทให้ใช้ handleCloseModal แทน */}
+                        <button onClick={handleCloseModal} className="btn-close" title="ปิดหน้าต่าง">✕</button>
                         <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         </div>
@@ -216,7 +240,7 @@ const Pretest = ({ userId, onComplete }) => {
                                 onClick={handleSkip}
                                 style={{ padding: '10px', background: 'transparent', color: '#64748B', border: 'none', fontSize: '14px', textDecoration: 'underline', cursor: 'pointer' }}
                             >
-                                ข้ามไปก่อน (กลับมาทำภายหลังได้ทุกเมื่อ)
+                                ข้ามไปก่อน (ระบบจะบันทึกเป็นพื้นฐาน Level 1)
                             </button>
                         </div>
                     </div>
@@ -292,7 +316,7 @@ const Pretest = ({ userId, onComplete }) => {
                                 รายงานผลการประเมินศักยภาพเบื้องต้น
                             </h2>
                             <p style={{ color: '#64748B', fontSize: '14px', margin: 0, lineHeight: '1.6' }}>
-                                ระบบได้บันทึกระดับความสามารถของคุณเพื่อนำไปปรับแผนการเรียนในตาราง  Planner เรียบร้อยแล้ว
+                                ระบบได้บันทึกระดับความสามารถของคุณ คุณสามารถนำไปปรับแบบแผนการเรียนในตาราง Planner ได้
                             </p>
                         </div>
 
