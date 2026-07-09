@@ -13,7 +13,6 @@ export default function MockExamMode({ userId }) {
     const [showSubmitModal, setShowSubmitModal] = useState(false);
     const [reviewPage, setReviewPage] = useState(1);
     
-    // State สำหรับเปิด/ปิด กระดาษคำตอบบนมือถือ
     const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
     const itemsPerPage = 10;
 
@@ -215,7 +214,7 @@ export default function MockExamMode({ userId }) {
                     /* เมื่อ Popup เปิดขึ้นมา */
                     .answer-sheet-overlay.is-open {
                         display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                        z-index: 99999; /* ปรับให้สูงปรี๊ดเพื่อบังแถบเมนูด้านบนมิด */
+                        z-index: 99999;
                         align-items: flex-end; justify-content: center;
                         animation: fadeIn 0.2s ease;
                     }
@@ -223,21 +222,35 @@ export default function MockExamMode({ userId }) {
                     /* พื้นหลังสีดำเบลอๆ */
                     .overlay-backdrop { display: block; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: -1; }
                     
-                    /* กล่องกระดาษคำตอบสีขาว */
+                    /* กล่องกระดาษคำตอบสีขาวที่เด้งขึ้นมา */
                     .answer-sheet-box {
                         width: 100%; position: relative; top: auto;
-                        border-radius: 20px 20px 0 0; border: none;
-                        max-height: 85vh; padding: 25px 20px;
+                        border-radius: 24px 24px 0 0; border: none;
+                        max-height: 70vh; /* ลดความสูงลงไม่ให้เต็มจอเกินไป */
+                        padding: 12px 20px 20px 20px;
                         animation: slideUp 0.3s ease;
-                        display: flex; flex-direction: column; /* เพื่อให้เลื่อนเฉพาะตรงกลาง */
+                        display: flex; flex-direction: column;
                         background: #FFFFFF;
-                        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+                        box-shadow: 0 -4px 25px rgba(0,0,0,0.15);
                     }
                     
-                    /* ให้ตัวตารางขยับเลื่อนได้ แต่ปุ่มส่งข้อสอบจะโดนล็อคอยู่ด้านล่าง */
+                    /* ขีดเล็กๆ สีเทาด้านบน (Drag Handle) ให้ความรู้สึกเหมือนแอป */
+                    .answer-sheet-box::before {
+                        content: ''; display: block; width: 40px; height: 5px;
+                        background: #CBD5E1; border-radius: 3px; margin: 0 auto 12px auto;
+                    }
+                    
+                    /* ให้ตัวตารางขยับเลื่อนได้ */
                     .nav-grid {
                         flex: 1; overflow-y: auto; max-height: unset; 
                         margin-bottom: 20px; padding-bottom: 10px;
+                        grid-template-columns: repeat(6, 1fr); /* เปลี่ยนเป็นเรียง 6 ข้อต่อแถว */
+                        gap: 8px; /* เพิ่มระยะห่างให้กดง่ายขึ้น */
+                    }
+                    
+                    /* ปรับขนาดตัวอักษรในปุ่มให้เล็กลงนิดนึง */
+                    .btn-nav {
+                        font-size: 13px;
                     }
                     
                     .close-sheet-btn { display: block; color: #64748B; padding: 5px; }

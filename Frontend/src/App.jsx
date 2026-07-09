@@ -27,6 +27,9 @@ function App() {
       return localStorage.getItem(`pretest_completed_${currentUser.id}`) === 'true';
   });
 
+  // สำหรับบอกว่าเป็นโหมดตั้งใจกดทำใหม่ (Retake)
+  const [isRetakeMode, setIsRetakeMode] = useState(false);
+
   useEffect(() => {
       if (currentUser) {
           localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -79,13 +82,17 @@ function App() {
     setCurrentMode(null);
   };
 
+  //  ตอนทำเสร็จ ให้ปิดโหมดทำใหม่ด้วย
   const handlePretestComplete = () => {
       localStorage.setItem(`pretest_completed_${userId}`, 'true');
       setHasCompletedPretest(true);
+      setIsRetakeMode(false); // เคลียร์โหมดกลับเป็นปกติ
       setCurrentMode(null);
   };
 
+  //  ตอนกดปุ่มทำใหม่จากหน้าแรก ให้เปิดสวิตช์โหมดทำใหม่
   const handleRetakePretest = () => {
+      setIsRetakeMode(true); // ส่งสัญญาณว่าเป็นโหมดทำซ้ำ
       setHasCompletedPretest(false);
   };
 
@@ -324,10 +331,12 @@ function App() {
         </div>
       )}
 
+      {/* 4. ส่งสถานะ isRetakeMode พ่วงไปให้หน้าต่าง Pretest ด้วย! */}
       {!hasCompletedPretest && !isAdmin && (
           <Pretest 
              userId={userId} 
              onComplete={handlePretestComplete} 
+             isRetake={isRetakeMode} 
           />
       )}
 
