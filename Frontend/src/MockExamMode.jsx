@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 
 export default function MockExamMode({ userId }) {
     const [step, setStep] = useState('start'); 
@@ -137,6 +138,67 @@ export default function MockExamMode({ userId }) {
     const totalReviewPages = Math.ceil(filteredQuestions.length / itemsPerPage);
     const currentReviewQuestions = filteredQuestions.slice((reviewPage - 1) * itemsPerPage, reviewPage * itemsPerPage);
 
+    const renderMobileAnswerSheet = () => {
+        if (!isMobileSheetOpen) return null;
+        
+        return ReactDOM.createPortal(
+            <div className="mobile-portal-overlay">
+                <style>{`
+                    .mobile-portal-overlay {
+                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                        z-index: 2147483647;
+                        display: flex; align-items: flex-start; justify-content: center;
+                        padding: 20px;
+                        overflow-y: auto;
+                        animation: fadeIn 0.2s ease;
+                    }
+                    .mobile-portal-backdrop {
+                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                        background: rgba(15, 23, 42, 0.65); z-index: -1;
+                    }
+                    .mobile-portal-box {
+                        width: 100%; max-width: 400px;
+                        margin: auto;
+                        background: #FFFFFF;
+                        border-radius: 12px;
+                        padding: 20px;
+                        display: flex; flex-direction: column;
+                        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+                        max-height: 75vh;
+                    }
+                    .mobile-portal-nav-grid {
+                        flex: 1; min-height: 0; overflow-y: auto;
+                        margin-bottom: 20px; padding-bottom: 10px;
+                        display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;
+                    }
+                    .mobile-portal-close {
+                        background: none; border: none; fontSize: 28px; line-height: 1; cursor: pointer; color: #64748B; padding: 5px;
+                    }
+                `}</style>
+                <div className="mobile-portal-backdrop" onClick={() => setIsMobileSheetOpen(false)}></div>
+                <div className="mobile-portal-box">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                        <h4 style={{ margin: '0', color: '#1A365D', fontSize: '15px', fontWeight: '600' }}>กระดาษคำตอบ</h4>
+                        <button className="mobile-portal-close" onClick={() => setIsMobileSheetOpen(false)}>
+                            &times;
+                        </button>
+                    </div>
+                    <div className="mobile-portal-nav-grid">
+                        {questions.map((q, idx) => (
+                            <button key={idx} onClick={() => handleNavigateQuestion(idx)} className={`btn-nav ${answers[q.id] ? 'answered' : ''} ${currentIndex === idx ? 'current' : ''}`}>
+                                {idx + 1}
+                            </button>
+                        ))}
+                    </div>
+                    <button onClick={() => { setIsMobileSheetOpen(false); setShowSubmitModal(true); }} style={{ width: '100%', padding: '12px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer' }}>
+                        ส่งข้อสอบคำนวณคะแนน
+                    </button>
+                </div>
+            </div>,
+            document.body
+        );
+    };
+
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#F3F4F6', padding: '30px 20px', fontFamily: '"Kanit", sans-serif', position: 'relative' }}>
             <style>{`
@@ -167,8 +229,8 @@ export default function MockExamMode({ userId }) {
                 .btn-page-num.active { background: #1A365D; color: white; border-color: #1A365D; }
                 .btn-page-num:disabled, .btn-page-nav:disabled { opacity: 0.4; cursor: not-allowed; }
 
-                .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 99999; animation: fadeIn 0.2s ease; }
-                .modal-box { background: white; padding: 36px 32px; border-radius: 12px; max-width: 450px; width: 95%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25); animation: slideUp 0.3s ease; border-top: 6px solid #1A365D; }
+                .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); display: flex; align-items: center; justify-content: center; z-index: 2147483647; animation: fadeIn 0.2s ease; }
+                .modal-box { background: white; padding: 36px 32px; border-radius: 12px; max-width: 450px; width: 95%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25); animation: slideUp 0.3s ease; border-top: 6px solid #1A365D; margin: auto; }
 
                 ::-webkit-scrollbar { width: 6px; }
                 ::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 4px; }
@@ -181,8 +243,6 @@ export default function MockExamMode({ userId }) {
                 
                 .mobile-toggle-btn { display: none; }
                 .answer-sheet-overlay { display: block; }
-                .overlay-backdrop { display: none; }
-                .close-sheet-btn { display: none; }
                 .answer-sheet-box { background: #FFFFFF; padding: 25px; border-radius: 8px; border: 1px solid #E5E7EB; align-self: start; position: sticky; top: 20px; }
                 
                 @media (max-width: 768px) {
@@ -203,41 +263,10 @@ export default function MockExamMode({ userId }) {
                     .mobile-toggle-btn:active { transform: scale(0.95); }
 
                     .answer-sheet-overlay { display: none; }
-                    
-                    .answer-sheet-overlay.is-open {
-                        display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                        z-index: 99999;
-                        align-items: center; justify-content: center;
-                        padding: 16px;
-                        animation: fadeIn 0.2s ease;
-                    }
-                    
-                    .overlay-backdrop { display: block; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: -1; }
-                    
-                    .answer-sheet-box {
-                        width: 100%; max-width: 400px; position: relative; top: 0; margin: 0;
-                        border-radius: 12px; border: none;
-                        max-height: 80vh;
-                        padding: 20px;
-                        animation: slideUp 0.3s ease;
-                        display: flex; flex-direction: column;
-                        background: #FFFFFF;
-                        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-                    }
-                    
-                    .answer-sheet-box::before { display: none; }
-                    
-                    .nav-grid {
-                        flex: 1; min-height: 0; overflow-y: auto; max-height: none;
-                        margin-bottom: 20px; padding-bottom: 10px;
-                        grid-template-columns: repeat(6, 1fr); gap: 8px;
-                    }
-                    
-                    .btn-nav { font-size: 13px; }
-                    
-                    .close-sheet-btn { display: block; color: #64748B; padding: 5px; }
                 }
             `}</style>
+
+            {renderMobileAnswerSheet()}
 
             {showSubmitModal && (
                 <div className="modal-overlay">
@@ -275,11 +304,11 @@ export default function MockExamMode({ userId }) {
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <button onClick={executeSubmitExam} style={{ padding: '14px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', cursor: 'pointer', boxShadow: '0 4px 6px rgba(26, 54, 93, 0.18)', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                            <button onClick={executeSubmitExam} style={{ padding: '14px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: '500', cursor: 'pointer', boxShadow: '0 4px 6px rgba(26, 54, 93, 0.18)', transition: 'background 0.2s' }}>
                                 ยืนยันการส่งข้อสอบและประมวลผล
                             </button>
                             
-                            <button onClick={() => setShowSubmitModal(false)} style={{ padding: '12px', background: 'white', color: '#64748B', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => { e.target.style.background = '#F8FAFC'; e.target.style.color = '#1E293B'; e.target.style.borderColor = '#94A3B8'; }} onMouseOut={(e) => { e.target.style.background = 'white'; e.target.style.color = '#64748B'; e.target.style.borderColor = '#CBD5E1'; }}>
+                            <button onClick={() => setShowSubmitModal(false)} style={{ padding: '12px', background: 'white', color: '#64748B', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }}>
                                 กลับไปทบทวนข้อสอบก่อน
                             </button>
                         </div>
@@ -288,7 +317,6 @@ export default function MockExamMode({ userId }) {
             )}
 
             <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-                
                 {step === 'start' && (
                     <div className="start-card" style={{ background: '#FFFFFF', borderRadius: '8px', borderTop: '6px solid #1A365D', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', textAlign: 'center' }}>
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '20px' }}>
@@ -320,7 +348,7 @@ export default function MockExamMode({ userId }) {
                             </div>
                         </div>
                         
-                        <button onClick={startExam} style={{ marginTop: '35px', padding: '14px 45px', fontSize: '16px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                        <button onClick={startExam} style={{ marginTop: '35px', padding: '14px 45px', fontSize: '16px', cursor: 'pointer', background: '#1A365D', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontWeight: '500', transition: 'background 0.2s' }}>
                             เริ่มสนามจำลองสอบจริง
                         </button>
                     </div>
@@ -378,14 +406,10 @@ export default function MockExamMode({ userId }) {
                             </div>
                         </div>
 
-                        <div className={`answer-sheet-overlay ${isMobileSheetOpen ? 'is-open' : ''}`}>
-                            <div className="overlay-backdrop" onClick={() => setIsMobileSheetOpen(false)}></div>
+                        <div className="answer-sheet-overlay">
                             <div className="answer-sheet-box">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                                     <h4 style={{ margin: '0', color: '#1A365D', fontSize: '15px', fontWeight: '600' }}>กระดาษคำตอบ</h4>
-                                    <button className="close-sheet-btn" onClick={() => setIsMobileSheetOpen(false)} style={{ background: 'none', border: 'none', fontSize: '28px', lineHeight: '1', cursor: 'pointer' }}>
-                                        &times;
-                                    </button>
                                 </div>
                                 <div className="nav-grid">
                                     {questions.map((q, idx) => (
@@ -394,8 +418,7 @@ export default function MockExamMode({ userId }) {
                                         </button>
                                     ))}
                                 </div>
-                                
-                                <button onClick={() => { setIsMobileSheetOpen(false); setShowSubmitModal(true); }} style={{ width: '100%', padding: '12px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', transition: 'background 0.2s', marginTop: 'auto' }} onMouseOver={(e) => e.target.style.background = '#2A4365'} onMouseOut={(e) => e.target.style.background = '#1A365D'}>
+                                <button onClick={() => { setShowSubmitModal(true); }} style={{ width: '100%', padding: '12px', background: '#1A365D', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', marginTop: 'auto' }}>
                                     ส่งข้อสอบคำนวณคะแนน
                                 </button>
                             </div>
