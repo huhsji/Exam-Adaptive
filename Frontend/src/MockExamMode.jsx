@@ -224,11 +224,11 @@ export default function MockExamMode({ userId }) {
                     
                     .overlay-backdrop { display: block; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: -1; }
                     
-                    /* กล่องกระดาษคำตอบสีขาวที่เด้งขึ้นมาตรงกลาง */
+                    
                     .answer-sheet-box {
-                        width: 100%; max-width: 450px; position: relative; top: auto;
+                        width: 100%; max-width: 400px; position: relative; top: auto;
                         border-radius: 16px; border: none;
-                        max-height: 80vh;
+                        max-height: 60vh; /* ลดความสูงลงเพื่อให้มีพื้นที่บน-ล่าง */
                         padding: 20px;
                         animation: slideUp 0.3s ease;
                         display: flex; flex-direction: column;
@@ -245,8 +245,8 @@ export default function MockExamMode({ userId }) {
                     .nav-grid {
                         flex: 1; overflow-y: auto; max-height: unset; 
                         margin-bottom: 20px; padding-bottom: 10px;
-                        grid-template-columns: repeat(6, 1fr); /* เปลี่ยนเป็นเรียง 6 ข้อต่อแถว */
-                        gap: 8px; /* เพิ่มระยะห่างให้กดง่ายขึ้น */
+                        grid-template-columns: repeat(6, 1fr); 
+                        gap: 8px;
                     }
                     
                     
