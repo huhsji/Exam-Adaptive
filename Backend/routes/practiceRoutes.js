@@ -241,26 +241,25 @@
             if (isFinished) {
                 await db.query(`UPDATE exam_sessions SET is_completed = TRUE, completed_at = CURRENT_TIMESTAMP WHERE id = ?`, [session_id]);
                 
-                // 1. ดึงคะแนนที่ผู้ใช้ทำได้ในรอบนี้ (ซึ่งคะแนนนี้จะไม่มีทางเกิน 100 แล้ว เพราะ 20 ข้อ x เลเวล 5)
+                
                 const [[sessionData]] = await db.query(`SELECT total_score FROM exam_sessions WHERE id = ?`, [session_id]);
                 const userScore = sessionData.total_score || 0;
 
-                // 2.  อัปเดต Level และ "บันทึกคะแนนที่ดีที่สุด (Best Score)" ลง accumulated_score
-                // ใช้ GREATEST() เพื่อเปรียบเทียบ ถ้าคะแนนรอบนี้ (userScore) เยอะกว่าของเดิม ให้ทับเลย
+                
                 await db.query(`
                     INSERT INTO user_skills (user_id, part_id, proficiency_level, accumulated_score) 
                     VALUES (?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                         proficiency_level = ?, 
-                        accumulated_score = GREATEST(accumulated_score, ?)`,
+                        accumulated_score = ?`, // ลบคำว่า GREATEST() ออกไปเลย ใช้ ? รับค่าล่าสุดตรงๆ
                     [user_id, partIdNum, difficulty, userScore, difficulty, userScore] 
                 );
 
-                // 3. ไม่ต้อง Query หาคะแนนเต็มที่ซับซ้อนแล้ว เพราะเราล็อกเพดานที่ 100 ไปเลย
+                
                 const maxPossibleScore = 100;
-                const finalPercentage = userScore; // ค่าเท่ากับเปอรเซ็นต์เลย เพราะเต็ม 100
+                const finalPercentage = userScore; 
 
-                // 4. คืนค่ากลับไปพร้อมก้อน summary สรุปผล
+                // คืนค่ากลับไปพร้อมก้อน summary สรุปผล
                 return res.json({
                     is_correct: isCorrect,
                     earned_score: earnedScore,
