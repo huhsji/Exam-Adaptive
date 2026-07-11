@@ -15,6 +15,9 @@ export default function MockExamMode({ userId }) {
     const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
     const itemsPerPage = 10;
 
+    //  [เพิ่มโค้ดส่วนรูปภาพ] ประกาศ URL สำหรับชี้ไปหาโฟลเดอร์รูปภาพที่ Backend
+    const imgBaseUrl = `${import.meta.env.VITE_API_BASE_URL}/upload/questions`;
+
     useEffect(() => {
         let timerId;
         if (step === 'playing' && timeLeft > 0) {
@@ -78,34 +81,31 @@ export default function MockExamMode({ userId }) {
     const executeSubmitExam = async () => {
         setShowSubmitModal(false);
 
-        let totalCorrect = 0;
-        questions.forEach((q) => {
-            const userAnswer = answers[q.id];
-            if (userAnswer) {
-                const cleanUserAnswer = userAnswer.trim();
-                const correctAnswer = q.correct_answer ? q.correct_answer.trim() : '';
-                if (cleanUserAnswer.startsWith(correctAnswer) || cleanUserAnswer === correctAnswer) {
-                    totalCorrect += 1;
-                }
-            }
-        });
-
         try {
-            await fetch(`${import.meta.env.VITE_API_BASE_URL}/mock/submit`, {
+            // ส่ง session_id และ answers (กระดาษคำตอบที่ฝนไว้) ไปให้ Backend ตรวจ
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/mock/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     session_id: sessionId, 
-                    total_score: totalCorrect 
+                    user_answers: answers 
                 })
             });
             
-            setScore(totalCorrect);
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert(data.error || 'เกิดข้อผิดพลาดในการส่งข้อสอบ');
+                return;
+            }
+            
+            // รับผลคะแนนที่ Backend ตรวจเสร็จแล้วมาแสดงผล
+            setScore(data.final_score);
             setStep('summary');
+
         } catch (error) {
             console.error(error);
-            setScore(totalCorrect);
-            setStep('summary');
+            alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์เพื่อส่งคำตอบได้');
         }
     };
 
@@ -379,20 +379,50 @@ export default function MockExamMode({ userId }) {
                                 </div>
 
                                 <div style={{ lineHeight: '1.7', color: '#1F2937', marginBottom: '35px', minHeight: '80px', fontSize: '16px' }}>
-                                    {questions[currentIndex]?.question_text}
+                                    {/*  */}
+                                    <div style={{ marginBottom: questions[currentIndex]?.question_image ? '15px' : '0' }}>
+                                        {questions[currentIndex]?.question_text}
+                                    </div>
+
+                                    {/* */}
+                                    {questions[currentIndex]?.question_image && (
+                                        <div style={{ textAlign: 'center', background: '#F8FAFC', padding: '10px', borderRadius: '8px', border: '1px dashed #CBD5E1' }}>
+                                            <img 
+                                                src={`${imgBaseUrl}/${questions[currentIndex].question_image}`} 
+                                                alt="ภาพประกอบโจทย์" 
+                                                style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }} 
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     {questions[currentIndex]?.options.map((option, idx) => {
-                                        const isSelected = answers[questions[currentIndex].id] === option;
+                                         
+                                        const isSelected = answers[questions[currentIndex].id] === option.text;
                                         return (
                                             <label key={idx} className={`option-card ${isSelected ? 'selected' : ''}`}>
                                                 <input
-                                                    type="radio" name="mock_option" value={option} checked={isSelected}
-                                                    onChange={() => handleSelectAnswer(questions[currentIndex].id, option)}
+                                                    // 
+                                                    type="radio" name="mock_option" value={option.text} checked={isSelected}
+                                                    onChange={() => handleSelectAnswer(questions[currentIndex].id, option.text)}
                                                     style={{ margin: '4px 15px 0 0', width: '18px', height: '18px', accentColor: '#1A365D', cursor: 'pointer', flexShrink: 0 }}
                                                 />
-                                                <span style={{ color: '#374151', fontSize: '15px' }}>{option}</span>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    {/*  แสดงข้อความของตัวเลือก */}
+                                                    <span style={{ color: '#374151', fontSize: '15px' }}>{option.text}</span>
+                                                    
+                                                    {/*  ถ้าช้อยส์ข้อนี้มีรูปภาพให้แสดงด้วย */}
+                                                    {option.image && (
+                                                        <div style={{ marginTop: '10px' }}>
+                                                            <img 
+                                                                src={`${imgBaseUrl}/${option.image}`} 
+                                                                alt={`ภาพตัวเลือก`} 
+                                                                style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '6px', border: '1px solid #E2E8F0', objectFit: 'contain' }} 
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </label>
                                         );
                                     })}
@@ -475,7 +505,19 @@ export default function MockExamMode({ userId }) {
                                     <div key={q.id} style={{ padding: '24px', borderRadius: '6px', borderLeft: `4px solid ${isCorrect ? '#10B981' : '#EF4444'}`, background: '#F8FAFC', border: '1px solid #E2E8F0', borderTop: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
                                         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
                                             <div style={{ fontWeight: '600', color: isCorrect ? '#059669' : '#B91C1C', fontSize: '16px', minWidth: '45px' }}>ข้อ {q.originalIndex}.</div>
-                                            <div style={{ color: '#1F2937', fontWeight: '500', lineHeight: '1.6' }}>{q.question_text}</div>
+                                            <div style={{ color: '#1F2937', fontWeight: '500', lineHeight: '1.6' }}>
+                                                {q.question_text}
+                                                {/* 🟢 [เพิ่มโค้ดส่วนรูปภาพ] แสดงรูปภาพโจทย์ในหน้าเฉลย (ถ้ามี) */}
+                                                {q.question_image && (
+                                                    <div style={{ marginTop: '10px' }}>
+                                                        <img 
+                                                            src={`${imgBaseUrl}/${q.question_image}`} 
+                                                            alt="ภาพโจทย์" 
+                                                            style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', border: '1px solid #E2E8F0', objectFit: 'contain' }} 
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         
                                         <div style={{ paddingLeft: '57px', fontSize: '14px', color: '#4B5563' }}>

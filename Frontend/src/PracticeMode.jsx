@@ -36,6 +36,8 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
     const [reviewPage, setReviewPage] = useState(1);
     const itemsPerPage = 10;
 
+    const imgBaseUrl = `${import.meta.env.VITE_API_BASE_URL}/upload/questions`;
+
     useEffect(() => {
         localStorage.setItem('practice_step', step);
     }, [step]);
@@ -476,21 +478,46 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                                     </div>
                                 </div>
 
-                                <h3 style={{ lineHeight: '1.7', color: '#1F2937', marginBottom: '30px', fontSize: '18px', fontWeight: 'normal' }}>
+                                {/*  ส่วนแสดงโจทย์และรูปภาพโจทย์ */}
+                                <h3 style={{ lineHeight: '1.7', color: '#1F2937', marginBottom: '15px', fontSize: '18px', fontWeight: 'normal' }}>
                                     {questionData?.question?.question_text.replace(/^\d+\s*[).]\s*/, '')}
                                 </h3>
+                                
+                                {questionData?.question?.question_image && (
+                                    <div style={{ textAlign: 'center', background: '#F8FAFC', padding: '10px', borderRadius: '8px', border: '1px dashed #CBD5E1', marginBottom: '30px' }}>
+                                        <img 
+                                            src={`${imgBaseUrl}/${questionData.question.question_image}`} 
+                                            alt="ภาพประกอบโจทย์" 
+                                            style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }} 
+                                        />
+                                    </div>
+                                )}
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     {questionData?.question?.options.map((option, index) => {
-                                        const isSelected = selectedAnswer === option;
+                                        //  เปลี่ยนการเช็กให้ใช้ option.text แทน
+                                        const isSelected = selectedAnswer === option.text;
                                         return (
                                             <label key={index} className={`option-card ${isSelected ? 'selected' : ''}`}>
                                                 <input
-                                                    type="radio" name="exam_option" value={option} checked={isSelected}
+                                                    //  ใช้ option.text ใน value
+                                                    type="radio" name="exam_option" value={option.text} checked={isSelected}
                                                     onChange={(e) => setSelectedAnswer(e.target.value)}
                                                     style={{ margin: '4px 15px 0 0', width: '18px', height: '18px', accentColor: '#1A365D', cursor: 'pointer', flexShrink: 0 }}
                                                 />
-                                                <span style={{ color: '#374151', fontSize: '15px', lineHeight: '1.6' }}>{option}</span>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    {/*  แสดงข้อความตัวเลือก และรูปตัวเลือกถ้ามี */}
+                                                    <span style={{ color: '#374151', fontSize: '15px', lineHeight: '1.6' }}>{option.text}</span>
+                                                    {option.image && (
+                                                        <div style={{ marginTop: '10px' }}>
+                                                            <img 
+                                                                src={`${imgBaseUrl}/${option.image}`} 
+                                                                alt="ภาพตัวเลือก" 
+                                                                style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '6px', border: '1px solid #E2E8F0', objectFit: 'contain' }} 
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </label>
                                         );
                                     })}
@@ -583,6 +610,16 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                                             <div style={{ fontWeight: '600', color: isCorrect ? '#059669' : '#B91C1C', fontSize: '16px', minWidth: '45px' }}>ข้อ {actualIndex + 1}.</div>
                                             <div style={{ color: '#1F2937', fontWeight: '500', fontSize: '15px', lineHeight: '1.6' }}>
                                                 {item.question.question_text.replace(/^\d+\s*[).]\s*/, '')}
+                                                {/*  แสดงรูปภาพโจทย์ในหน้าทบทวนด้วย */}
+                                                {item.question.question_image && (
+                                                    <div style={{ marginTop: '10px' }}>
+                                                        <img 
+                                                            src={`${imgBaseUrl}/${item.question.question_image}`} 
+                                                            alt="ภาพโจทย์" 
+                                                            style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', border: '1px solid #E2E8F0', objectFit: 'contain' }} 
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         

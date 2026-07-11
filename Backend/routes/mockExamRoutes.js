@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// API สร้างชุดข้อสอบ 100 ข้อตามเลเวลผู้ใช้ (อัปเกรดลอจิกตัวตายตัวแทน)
+// สร้างชุดข้อสอบ 100 ข้อตามเลเวลผู้ใช้ 
 router.post('/generate', async (req, res) => {
     try {
         const { user_id } = req.body;
@@ -11,7 +11,7 @@ router.post('/generate', async (req, res) => {
             return res.status(400).json({ error: "กรุณาส่ง user_id มาด้วยครับ" });
         }
 
-        // 1. กวาดข้อมูลเลเวลสกิล "ทุกวิชา" ของ User คนนี้มาเตรียมไว้
+        // กวาดข้อมูลเลเวลสกิล "ทุกวิชา" ของ User คนนี้มาเตรียมไว้
         const [skills] = await db.query(`
             SELECT p.part_name, us.proficiency_level 
             FROM user_skills us
@@ -24,7 +24,7 @@ router.post('/generate', async (req, res) => {
             userSkillMap[skill.part_name] = skill.proficiency_level;
         });
 
-       // ฟังก์ชันตัวช่วย: ดึงข้อสอบตามหมวดหมู่หลัก (ใช้ LIKE ป้องกันการสะกดไม่ตรงเป๊ะ)
+       // ฟังก์ชันตัวช่วย ดึงข้อสอบตามหมวดหมู่หลัก 
         const fetchQuestions = async (mainCategoryKeyword, quotaLimit) => {
             const [parts] = await db.query(
                 `SELECT id, part_name FROM parts WHERE category LIKE ?`,
@@ -46,17 +46,30 @@ router.post('/generate', async (req, res) => {
                 const easyLevel = Math.max(diffLevel - 1, 1);
                 const challengeLevel = Math.min(diffLevel + 1, 5); 
 
-                // ดึงข้อสอบมาตุนไว้เยอะๆ ก่อน (เพิ่ม LIMIT เป็น 200 เผื่อข้อสอบขาด)
+                // ดึงข้อสอบมาตุนไว้ ก่อน (เพิ่ม LIMIT เป็น 200 เผื่อข้อสอบขาด)
+                //   ดึงฟิลด์ question_image และ option_a_image ถึง option_d_image ขึ้นมาด้วย
                 const [qList] = await db.query(`
-                    SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d, exam_year, explanation, correct_answer
+                    SELECT id, part_id, difficulty_level, question_text, question_image, 
+                           option_a, option_b, option_c, option_d,
+                           option_a_image, option_b_image, option_c_image, option_d_image,
+                           exam_year, explanation, correct_answer
                     FROM questions
                     WHERE part_id = ? AND difficulty_level IN (?, ?, ?)
                     ORDER BY RAND() LIMIT 200
                 `, [partId, easyLevel, diffLevel, challengeLevel]);
 
                 qList.forEach(q => {
-                    const optionsArray = [q.option_a, q.option_b, q.option_c, q.option_d];
+                    //   ปรับโครงสร้าง options ให้เก็บค่าเป็น Object { text, image }
+                    const optionsArray = [
+                        { text: q.option_a, image: q.option_a_image },
+                        { text: q.option_b, image: q.option_b_image },
+                        { text: q.option_c, image: q.option_c_image },
+                        { text: q.option_d, image: q.option_d_image }
+                    ];
                     delete q.option_a; delete q.option_b; delete q.option_c; delete q.option_d;
+                    //  ลบฟิลด์รูปช้อยส์ออกเพื่อไม่ให้รก object หลัก
+                    delete q.option_a_image; delete q.option_b_image; delete q.option_c_image; delete q.option_d_image;
+                    
                     const formattedQ = { ...q, options: optionsArray };
 
                     // แยกข้อสอบลงตะกร้า
@@ -89,7 +102,6 @@ router.post('/generate', async (req, res) => {
             const remainingQuota = quotaLimit - finalQuestions.length;
             finalQuestions.push(...currentPool.splice(0, remainingQuota));
 
-            // LIFESAVER 1: ถ้าดึง currentPool แล้วยังไม่พอ ให้เอาของที่เหลือในตะกร้าอื่นมาโปะ
             if (finalQuestions.length < quotaLimit) {
                 let leftoverPool = [...easyPool, ...currentPool, ...hardPool];
                 leftoverPool.sort(() => Math.random() - 0.5);
@@ -98,7 +110,7 @@ router.post('/generate', async (req, res) => {
                 finalQuestions.push(...leftoverPool.splice(0, fillAmount));
             }
 
-            //  ULTIMATE LIFESAVER 2: ถ้าตะกร้าบนว่างเปล่าจริงๆ กวาดข้อสอบที่เหลือทั้งหมดใน DB มาโปะ!
+            // ถ้าตะกร้าบนว่าง กวาดข้อสอบที่เหลือทั้งหมดใน DB มา
             if (finalQuestions.length < quotaLimit) {
                 const ultimateFillAmount = quotaLimit - finalQuestions.length;
                 const partIds = parts.map(p => p.id);
@@ -107,44 +119,55 @@ router.post('/generate', async (req, res) => {
                     const existingIds = finalQuestions.map(q => q.id);
                     const excludeIds = existingIds.length > 0 ? existingIds.join(',') : '0'; 
                     
+                    // ดึงฟิลด์รูปภาพมาให้ครบ
                     const [emergencyQuestions] = await db.query(`
-                        SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d, exam_year, explanation, correct_answer
+                        SELECT id, part_id, difficulty_level, question_text, question_image,
+                               option_a, option_b, option_c, option_d,
+                               option_a_image, option_b_image, option_c_image, option_d_image,
+                               exam_year, explanation, correct_answer
                         FROM questions
                         WHERE part_id IN (?) AND id NOT IN (${excludeIds})
                         ORDER BY RAND() LIMIT ?
                     `, [partIds, ultimateFillAmount]);
 
                     emergencyQuestions.forEach(q => {
-                        const optionsArray = [q.option_a, q.option_b, q.option_c, q.option_d];
+                        // จัดรูป options เป็น Object เหมือนด้านบน
+                        const optionsArray = [
+                            { text: q.option_a, image: q.option_a_image },
+                            { text: q.option_b, image: q.option_b_image },
+                            { text: q.option_c, image: q.option_c_image },
+                            { text: q.option_d, image: q.option_d_image }
+                        ];
                         delete q.option_a; delete q.option_b; delete q.option_c; delete q.option_d;
+                        delete q.option_a_image; delete q.option_b_image; delete q.option_c_image; delete q.option_d_image;
+                        
                         finalQuestions.push({ ...q, options: optionsArray });
                     });
                 }
             }
-
-            // เขย่ารวมครั้งสุดท้าย ตัดให้พอดีเป๊ะ
+            
             finalQuestions.sort(() => Math.random() - 0.5);
             return finalQuestions.slice(0, quotaLimit);
         };
 
-        // 2. สั่งดึงข้อสอบ (ใช้ Keyword สั้นๆ เพื่อให้ LIKE ทำงานได้ครอบคลุม)
+        // สั่งดึงข้อสอบ
         const part1 = await fetchQuestions('คิดวิเคราะห์', 50);
         const part2 = await fetchQuestions('อังกฤษ', 25);
         const part3 = await fetchQuestions('ข้าราชการที่ดี', 25);
 
-        // 3. เอาข้อสอบทั้ง 3 ก้อนมารวมร่างกัน
+        // เอาข้อสอบทั้ง 3 ก้อนมารวมร่างกัน
         let allQuestions = [...part1, ...part2, ...part3];
 
-        // 4. สลับข้อสอบให้มั่ว (Shuffle) เหมือนข้อสอบจริง
+        // สลับข้อสอบให้มั่ว (Shuffle) เหมือนข้อสอบจริง
         allQuestions.sort(() => Math.random() - 0.5);
 
-        // 5. สร้างประวัติในตาราง exam_sessions เพื่อออก session_id
+        // สร้างประวัติในตาราง exam_sessions เพื่อออก session_id
         const [sessionResult] = await db.query(
             `INSERT INTO exam_sessions (user_id, session_type) VALUES (?, ?)`,
             [user_id, 'mock_exam_100']
         );
         
-        // 6. ส่งชุดข้อสอบกลับไปให้หน้าบ้าน
+        // ส่งชุดข้อสอบกลับไปให้หน้าบ้าน
         res.json({
             message: "สร้างชุดข้อสอบ Mock Exam สำเร็จ",
             session_id: sessionResult.insertId,
@@ -158,13 +181,36 @@ router.post('/generate', async (req, res) => {
     }
 });
 
-// API บันทึกคะแนนสอบ Mock Exam (คงเดิม)
+
 router.post('/submit', async (req, res) => {
     try {
-        const { session_id, total_score } = req.body;
+        const { session_id, user_answers } = req.body;
 
         if (!session_id) {
             return res.status(400).json({ error: "ไม่พบข้อมูลรอบการสอบ (session_id)" });
+        }
+
+        let final_score = 0;
+        const answeredQuestionIds = user_answers ? Object.keys(user_answers) : [];
+
+        if (answeredQuestionIds.length > 0) {
+            const [correctAnswers] = await db.query(`
+                SELECT id, correct_answer 
+                FROM questions 
+                WHERE id IN (?)
+            `, [answeredQuestionIds]);
+
+            correctAnswers.forEach(q => {
+                const userAnswer = user_answers[q.id];
+                if (userAnswer) {
+                    const cleanUserAnswer = userAnswer.trim();
+                    const correctAnswer = q.correct_answer ? q.correct_answer.trim() : '';
+                    
+                    if (cleanUserAnswer.startsWith(correctAnswer) || cleanUserAnswer === correctAnswer) {
+                        final_score += 1;
+                    }
+                }
+            });
         }
 
         await db.query(`
@@ -173,13 +219,13 @@ router.post('/submit', async (req, res) => {
                 is_completed = TRUE, 
                 completed_at = CURRENT_TIMESTAMP 
             WHERE id = ?
-        `, [total_score, session_id]);
+        `, [final_score, session_id]);
 
-        res.json({ message: "บันทึกคะแนนสอบสำเร็จ", final_score: total_score });
+        res.json({ message: "บันทึกคะแนนสอบสำเร็จ", final_score: final_score });
 
     } catch (error) {
         console.error("เกิดข้อผิดพลาดในการบันทึกคะแนน mock exam:", error);
-        res.status(500).json({ error: "เซิร์ฟเวอร์มีปัญหาในการบันทึกคะแนน" });
+        res.status(500).json({ error: "เซิร์ฟเวอร์มีปัญหาในการตรวจและบันทึกคะแนน" });
     }
 });
 
