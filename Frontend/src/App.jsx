@@ -242,7 +242,7 @@ function App() {
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                   </div>
                   <h2 style={{ color: '#475569', margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600' }}>จัดการข้อสอบ (Admin)</h2>
-                  <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>เพิ่มและแก้ไขข้อสอบ อัปโหลดรูปภาพโจทย์และตัวเลือกเข้าสู่ฐานข้อมูล</p>
+                  <p style={{ color: '#6B7280', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>เพิ่มข้อสอบ อัปโหลดรูปภาพโจทย์และตัวเลือกเข้าสู่ฐานข้อมูล</p>
                 </div>
             </div>
           ) : (
@@ -254,7 +254,7 @@ function App() {
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                             </div>
                             <div style={{ textAlign: 'left' }}>
-                                <h4 style={{ margin: '0 0 3px 0', color: '#92400E', fontSize: '15px', fontWeight: '600' }}>ต้องการให้ AI ปรับตารางอ่านหนังสือให้แม่นยำขึ้นหรือไม่</h4>
+                                <h4 style={{ margin: '0 0 3px 0', color: '#92400E', fontSize: '15px', fontWeight: '600' }}>ต้องการปรับตารางอ่านหนังสือให้แม่นยำขึ้นหรือไม่</h4>
                                 <p style={{ margin: 0, color: '#B45309', fontSize: '13px' }}>หากคุณเคยกดข้าม หรืออยากอัปเดตระดับความสามารถปัจจุบัน สามารถทำแบบทดสอบได้ทุกเมื่อ</p>
                             </div>
                         </div>
@@ -331,7 +331,7 @@ function App() {
         </div>
       )}
 
-      {/* 4. ส่งสถานะ isRetakeMode พ่วงไปให้หน้าต่าง Pretest ด้วย! */}
+      {/*  ส่งสถานะ isRetakeMode พ่วงไปให้หน้าต่าง Pretest ด้วย */}
       {!hasCompletedPretest && !isAdmin && (
           <Pretest 
              userId={userId} 
