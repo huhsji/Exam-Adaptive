@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-
 const Pretest = ({ userId, onComplete, isRetake = false }) => {
     const [viewState, setViewState] = useState('loading'); 
     const [parts, setParts] = useState([]);
@@ -18,25 +17,20 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
         checkUserStatusAndFetchParts();
     }, []);
 
-    // เช็กประวัติก่อน ถ้าเคยทำแล้วให้ข้ามเลย ถ้ายังค่อยดึงข้อสอบ
     const checkUserStatusAndFetchParts = async () => {
         setLoading(true);
         try {
-            // 
             if (!isRetake) {
-                // เช็กกับหลังบ้านว่ามีสกิลหรือยัง
                 const checkRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/check/${userId}`);
                 if (checkRes.ok) {
                     const statusData = await checkRes.json();
                     if (statusData.hasSkills) {
-                        // ถ้ามีประวัติแล้ว ปิดหน้า Pre-test ไปเลย ไม่ต้องโชว์
                         if (onComplete) onComplete();
                         return; 
                     }
                 }
             }
             
-            // ถ้าเป็นผู้ใช้ใหม่ หรือ กดทำใหม่ ค่อยดึงข้อสอบ
             const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/parts`);
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
@@ -72,33 +66,57 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
         }
     };
 
+    // 
     const handleConfirmAnswer = async () => {
         if (!selectedOption || !question) return;
-        const isCorrect = selectedOption === question.correct_answer;
         const currentPart = parts[currentPartIndex];
 
-        if (step === 1) {
-            setIsStep1Correct(isCorrect);
-            setStep(2);
-            fetchQuestion(currentPart.id, isCorrect ? 4 : 2);
-        } else {
-            let finalLevel = 1;
-            if (isStep1Correct && isCorrect) finalLevel = 4;
-            else if (isStep1Correct && !isCorrect) finalLevel = 3;
-            else if (!isStep1Correct && isCorrect) finalLevel = 2;
+        setLoading(true);
 
-            const newResults = [...results, { partId: currentPart.id, level: finalLevel }];
-            setResults(newResults);
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/answer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    partId: currentPart.id,
+                    questionId: question.id,
+                    selectedOption: selectedOption,
+                    step: step,
+                    isStep1Correct: isStep1Correct
+                })
+            });
 
-            if (currentPartIndex + 1 < parts.length) {
-                const nextPartIndex = currentPartIndex + 1;
-                setCurrentPartIndex(nextPartIndex);
-                setStep(1);
-                setIsStep1Correct(null);
-                fetchQuestion(parts[nextPartIndex].id, 3);
+            if (!res.ok) throw new Error('Network response was not ok');
+            const data = await res.json();
+
+            
+            if (data.isFinished) {
+                const newResults = [...results, { partId: currentPart.id, level: data.finalLevel }];
+                setResults(newResults);
+
+                if (currentPartIndex + 1 < parts.length) {
+                    const nextPartIndex = currentPartIndex + 1;
+                    setCurrentPartIndex(nextPartIndex);
+                    setStep(1);
+                    setIsStep1Correct(null);
+                    fetchQuestion(parts[nextPartIndex].id, 3); // ขึ้นพาร์ทใหม่ เริ่มตรงกลางเหมือนเดิม
+                } else {
+                    setViewState('summary');
+                    setLoading(false);
+                }
             } else {
-                submitResults(newResults, false);
+                
+                setStep(data.nextStep);
+                setIsStep1Correct(data.isStep1Correct);
+                setQuestion(data.nextQuestion);
+                setSelectedOption('');
+                setLoading(false);
             }
+        } catch (error) {
+            console.error("Error confirming answer:", error);
+            alert("เกิดข้อผิดพลาดในการตรวจสอบคำตอบครับ");
+            setLoading(false);
         }
     };
 
@@ -133,7 +151,6 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
         }
     };
 
-    // ข้ามไปก่อน ทำหน้าที่ตั้งค่า Level 1 ให้เฉพาะคนที่เป็น User ใหม่
     const handleSkip = () => {
         if (window.confirm("คุณต้องการข้ามไปก่อนใช่หรือไม่?\n(ระบบจะตั้งค่าเริ่มต้นเป็น Level 1 และคุณสามารถกดกลับมาทำแบบประเมินใหม่ได้ที่หน้าหลักเสมอครับ)")) {
             if (parts.length > 0) {

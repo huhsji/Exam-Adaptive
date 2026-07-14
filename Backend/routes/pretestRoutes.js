@@ -2,10 +2,9 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// 1. API: ดึงรายชื่อพาร์ททั้งหมดแบบ 
+// ดึงรายชื่อพาร์ททั้งหมดแบบ 
 router.get('/parts', async (req, res) => {
     try {
-        // เพิ่ม WHERE category != 'Mock Exam' เพื่อไม่ให้โหมดจำลองสอบหลุดเข้ามาใน Pre-test
         const [parts] = await db.execute(`
             SELECT id, part_name, category 
             FROM parts 
@@ -19,14 +18,14 @@ router.get('/parts', async (req, res) => {
     }
 });
 
-// 2. API: ดึงโจทย์ 1 ข้อ ตามรหัสพาร์ท และ ระดับความยาก
+// ดึงโจทย์ 1 ข้อ ตามรหัสพาร์ท และ ระดับความยาก (ใช้ดึงข้อแรกของพาร์ท)
 router.get('/question/:partId/:difficultyLevel', async (req, res) => {
     try {
         const { partId, difficultyLevel } = req.params;
 
-        // 1. ลองหาข้อสอบตรงตาม Level ที่ขอมาก่อน
+        
         let query = `
-            SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d, correct_answer 
+            SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d 
             FROM questions 
             WHERE part_id = ? AND difficulty_level = ? 
             ORDER BY RAND() 
@@ -34,12 +33,10 @@ router.get('/question/:partId/:difficultyLevel', async (req, res) => {
         `;
         let [questions] = await db.execute(query, [partId, difficultyLevel]);
 
-        // 2.  THE LIFESAVER: ถ้าเลเวลที่ขอไม่มีในฐานข้อมูล (เช่น ขอ Level 3 แต่ DB มีแค่ Level 1)
-        // ให้กวาดหา "ข้อสอบเลเวลอะไรก็ได้" ในพาร์ทนั้นมาให้ User ทำแทน หน้าจอจะได้ไม่ค้าง
         if (questions.length === 0) {
             console.log(`[Lifesaver] Part ${partId} ขาดข้อสอบ Level ${difficultyLevel} ดึงเลเวลอื่นมาแทน`);
             let fallbackQuery = `
-                SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d, correct_answer 
+                SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d 
                 FROM questions 
                 WHERE part_id = ? 
                 ORDER BY RAND() 
@@ -59,7 +56,72 @@ router.get('/question/:partId/:difficultyLevel', async (req, res) => {
     }
 });
 
-// 3. API: บันทึกผลสอบทั้งหมดลงตาราง user_skills
+//   รับคำตอบจากผู้ใช้ ตรวจให้ คำนวณ Level ถัดไปให้ และส่งข้อต่อไปกลับไป
+router.post('/answer', async (req, res) => {
+    try {
+        const { userId, partId, questionId, selectedOption, step, isStep1Correct } = req.body;
+
+        //  ตรวจคำตอบที่ 
+        const [qRows] = await db.execute(`SELECT correct_answer FROM questions WHERE id = ?`, [questionId]);
+        if (qRows.length === 0) return res.status(404).json({ message: "Question not found" });
+        
+        const correct_answer = qRows[0].correct_answer;
+        const isCorrect = (selectedOption === correct_answer);
+
+        if (step === 1) {
+           // กรณีเพิ่งตอบข้อ 1 เสร็จ -> คำนวณหา Level ของโจทย์ข้อ 2
+            const nextLevel = isCorrect ? 4 : 2;
+            
+            let [nextQuestions] = await db.execute(`
+                SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d 
+                FROM questions 
+                WHERE part_id = ? AND difficulty_level = ? 
+                ORDER BY RAND() 
+                LIMIT 1
+            `, [partId, nextLevel]);
+
+            if (nextQuestions.length === 0) {
+                let fallbackQuery = `SELECT id, part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d FROM questions WHERE part_id = ? ORDER BY RAND() LIMIT 1`;
+                [nextQuestions] = await db.execute(fallbackQuery, [partId]);
+            }
+
+            // ตอบกลับไปว่ายังไม่จบ (isFinished: false) พร้อมโจทย์ข้อต่อไป
+            res.status(200).json({
+                isFinished: false,
+                nextStep: 2,
+                isStep1Correct: isCorrect,
+                nextQuestion: nextQuestions[0]
+            });
+
+        } else {
+            // กรณีเพิ่งตอบข้อ 2 เสร็จ -> สรุป Level และบันทึกลงฐานข้อมูล
+            let finalLevel = 1;
+            if (isStep1Correct && isCorrect) finalLevel = 4;
+            else if (isStep1Correct && !isCorrect) finalLevel = 3;
+            else if (!isStep1Correct && isCorrect) finalLevel = 2;
+
+            const saveQuery = `
+                INSERT INTO user_skills (user_id, part_id, proficiency_level, last_updated) 
+                VALUES (?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE 
+                proficiency_level = VALUES(proficiency_level),
+                last_updated = NOW()
+            `;
+            await db.execute(saveQuery, [userId, partId, finalLevel]);
+
+           
+            res.status(200).json({
+                isFinished: true,
+                finalLevel: finalLevel
+            });
+        }
+    } catch (error) {
+        console.error("Error processing answer:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+//  บันทึกผลสอบทั้งหมดลงตาราง user_skills (ยังคงไว้ใช้สำหรับตอนกดยอมแพ้/ข้ามไปก่อน)
 router.post('/submit', async (req, res) => {
     try {
         const { userId, results } = req.body; 
@@ -92,7 +154,6 @@ router.get('/check/:userId', async (req, res) => {
             WHERE user_id = ?
         `, [userId]);
         
-        // ถ้า count > 0 แปลว่าเคยทำแล้ว ส่งสถานะ hasSkills: true กลับไป
         res.status(200).json({ hasSkills: rows[0].count > 0 });
     } catch (error) {
         console.error("Error checking user skills:", error);
