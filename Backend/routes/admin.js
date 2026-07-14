@@ -70,7 +70,7 @@ router.post('/api/admin/questions', questionUpload, async (req, res) => {
 
         await db.query(sql, params);
 
-        res.status(201).json({ success: true, message: "บันทึกข้อสอบและอัปโหลดรูปภาพขึ้น Cloudinary เรียบร้อยแล้ว!"});
+        res.status(201).json({ success: true, message: "บันทึกข้อสอบและอัปโหลดรูปภาพขึ้น Cloudinary เรียบร้อยแล้ว"});
 
     } catch (error) {
         console.error("Error adding questions: ", error);
