@@ -5,15 +5,30 @@ const path = require('path');
 const db = require('../db');
 
 const XLSX = require('xlsx');
-const fs = require('fs')
+const fs = require('fs');
 
-const storage = multer.diskStorage({
-    destination: function (req , file , cb) {
-        cb(null, 'public/upload/questions/');
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
+//  นำเข้า Cloudinary
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+//  คอนฟิกค่า Cloudinary 
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+//  เปลี่ยน Storage ของภาพข้อสอบ ให้วิ่งขึ้น Cloudinary
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'questions', // สร้างโฟลเดอร์ชื่อ questions บนคลาวด์ให้อัตโนมัติ
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'], // อนุญาตเฉพาะไฟล์ภาพ
+        public_id: (req, file) => {
+            // ตั้งชื่อไฟล์ใหม่ให้ไม่ซ้ำกัน
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            return `img-${uniqueSuffix}`; 
+        }
     }
 });
 
@@ -27,15 +42,15 @@ const questionUpload = upload.fields([
     { name: 'option_d_image', maxCount: 1 }
 ]);
 
-router.post('/api/admin/questions' , questionUpload, async (req,res) => {
+router.post('/api/admin/questions', questionUpload, async (req, res) => {
     try {
         const { part_id, difficulty_level, question_text, option_a, option_b, option_c, option_d, correct_answer, exam_year, explanation } = req.body;
 
-        const question_image = req.files && req.files['question_image'] ? req.files['question_image'][0].filename : null;
-const option_a_image = req.files && req.files['option_a_image'] ? req.files['option_a_image'][0].filename : null;
-const option_b_image = req.files && req.files['option_b_image'] ? req.files['option_b_image'][0].filename : null;
-const option_c_image = req.files && req.files['option_c_image'] ? req.files['option_c_image'][0].filename : null;
-const option_d_image = req.files && req.files['option_d_image'] ? req.files['option_d_image'][0].filename : null;
+        const question_image = req.files && req.files['question_image'] ? req.files['question_image'][0].path : null;
+        const option_a_image = req.files && req.files['option_a_image'] ? req.files['option_a_image'][0].path : null;
+        const option_b_image = req.files && req.files['option_b_image'] ? req.files['option_b_image'][0].path : null;
+        const option_c_image = req.files && req.files['option_c_image'] ? req.files['option_c_image'][0].path : null;
+        const option_d_image = req.files && req.files['option_d_image'] ? req.files['option_d_image'][0].path : null;
         
         const sql = `
             INSERT INTO questions (
@@ -53,17 +68,17 @@ const option_d_image = req.files && req.files['option_d_image'] ? req.files['opt
             correct_answer, exam_year, explanation
         ];
 
-        await db.query(sql , params);
+        await db.query(sql, params);
 
-        res.status(201).json({ success: true, message: "บันทึกข้อสอบพร้อมรูปภาพเรียบร้อยแล้ว"});
+        res.status(201).json({ success: true, message: "บันทึกข้อสอบและอัปโหลดรูปภาพขึ้น Cloudinary เรียบร้อยแล้ว!"});
 
-    }catch (error) {
-        console.error("Error adding questions: " , error);
-        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดหลังบ้าน"});
+    } catch (error) {
+        console.error("Error adding questions: ", error);
+        res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดหลังบ้าน" });
     }
 });
 
-//  API ดึงรายชื่อวิชาทั้งหมดเพื่อเอาไปทำ Dropdown
+// API ดึงรายชื่อวิชาทั้งหมดเพื่อเอาไปทำ Dropdown
 router.get('/api/admin/parts', async (req, res) => {
     try {
         const [parts] = await db.query('SELECT id, part_name, category FROM parts');
@@ -74,11 +89,11 @@ router.get('/api/admin/parts', async (req, res) => {
     }
 });
 
+
 const excelStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         const dir = 'public/upload/excel/';
         
-        // ถ้าไม่มีโฟลเดอร์นี้อยู่ ให้ระบบสร้างให้เองเลย (ป้องกัน Error ENOENT)
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir, { recursive: true });
         }
