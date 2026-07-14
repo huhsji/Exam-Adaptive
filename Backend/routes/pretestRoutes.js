@@ -60,21 +60,46 @@ router.post('/answer', async (req, res) => {
     try {
         const { userId, partId, questionId, selectedOption, step, isStep1Correct } = req.body;
 
-        // ดึงเฉลยจากฐานข้อมูล
-        const [qRows] = await db.execute(`SELECT correct_answer FROM questions WHERE id = ?`, [questionId]);
+        // ดึงเฉลย "และตัวเลือกทั้งหมด" มาจากฐานข้อมูล
+        const [qRows] = await db.execute(`
+            SELECT option_a, option_b, option_c, option_d, correct_answer 
+            FROM questions 
+            WHERE id = ?
+        `, [questionId]);
+        
         if (qRows.length === 0) return res.status(404).json({ message: "Question not found" });
         
-        const correct_answer = qRows[0].correct_answer;
-        const safeSelectedOption = String(selectedOption || '').trim().toUpperCase();
-        const safeCorrectAnswer = String(correct_answer || '').trim().toUpperCase();
-        const isCorrect = (safeSelectedOption === safeCorrectAnswer);
-       
-        const currentStep = Number(step);
+        const qRow = qRows[0];
+        const dbCorrectAns = String(qRow.correct_answer || '').trim();
 
+        
+        
+        let expectedKey = null;
+        const options = ['A', 'B', 'C', 'D'];
+
+        for (const opt of options) {
+            const optText = String(qRow[`option_${opt.toLowerCase()}`] || '').trim();
+            
+            // เช่น ถ้าเฉลยคือ "ค." และ optText คือ "ค. นโยบาย" มันจะ Match กันทันที!
+            if (dbCorrectAns && optText.toLowerCase().startsWith(dbCorrectAns.toLowerCase())) {
+                expectedKey = opt;
+                break;
+            }
+        }
+
+        
+        if (!expectedKey && options.includes(dbCorrectAns.toUpperCase())) {
+            expectedKey = dbCorrectAns.toUpperCase();
+        }
+
+        
+        const isCorrect = (String(selectedOption).toUpperCase() === expectedKey);
+        
+
+        const currentStep = Number(step);
         const isStep1Passed = (isStep1Correct === true || String(isStep1Correct).toLowerCase() === 'true');
 
         if (currentStep === 1) {
-            // กรณีเพิ่งตอบข้อ 1 เสร็จ -> คำนวณหา Level ของโจทย์ข้อ 2
             const nextLevel = isCorrect ? 4 : 2;
             
             let [nextQuestions] = await db.execute(`
@@ -90,22 +115,20 @@ router.post('/answer', async (req, res) => {
                 [nextQuestions] = await db.execute(fallbackQuery, [partId]);
             }
 
-            // ตอบกลับไปว่ายังไม่จบ (isFinished: false) พร้อมโจทย์ข้อต่อไป
             res.status(200).json({
                 isFinished: false,
                 nextStep: 2,
-                isStep1Correct: isCorrect, // ส่งค่า boolean คืนไปให้ Frontend
+                isStep1Correct: isCorrect, 
                 nextQuestion: nextQuestions[0]
             });
 
         } else {
-            // กรณีเพิ่งตอบข้อ 2 เสร็จ -> สรุป Level และบันทึกลงฐานข้อมูล
-            let finalLevel = 1; // ตั้งค่าตั้งต้นเป็น 1
+            let finalLevel = 1; 
 
-            if (isStep1Passed && isCorrect) finalLevel = 4;       // ถูกทั้ง 2 ข้อ
-            else if (isStep1Passed && !isCorrect) finalLevel = 3; // ถูกข้อ 1, ผิดข้อ 2
-            else if (!isStep1Passed && isCorrect) finalLevel = 2; // ผิดข้อ 1, ถูกข้อ 2
-            else finalLevel = 1;                                  // ผิดทั้ง 2 ข้อ
+            if (isStep1Passed && isCorrect) finalLevel = 4;       
+            else if (isStep1Passed && !isCorrect) finalLevel = 3; 
+            else if (!isStep1Passed && isCorrect) finalLevel = 2; 
+            else finalLevel = 1;                                  
 
             console.log(`[Pretest Eval] User:${userId} Part:${partId} | Step1 Correct:${isStep1Passed} | Step2 Correct:${isCorrect} | Result Level:${finalLevel}`);
 
@@ -129,7 +152,7 @@ router.post('/answer', async (req, res) => {
     }
 });
 
-// บันทึกผลสอบทั้งหมดลงตาราง user_skills (ใช้ตอนกดยอมแพ้/ข้ามไปก่อน)
+// บันทึกผลสอบทั้งหมดลงตาราง user_skills
 router.post('/submit', async (req, res) => {
     try {
         const { userId, results } = req.body; 

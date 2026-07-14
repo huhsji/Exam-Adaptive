@@ -66,7 +66,6 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
         }
     };
 
-    // 
     const handleConfirmAnswer = async () => {
         if (!selectedOption || !question) return;
         const currentPart = parts[currentPartIndex];
@@ -90,7 +89,6 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
 
-            
             if (data.isFinished) {
                 const newResults = [...results, { partId: currentPart.id, level: data.finalLevel }];
                 setResults(newResults);
@@ -100,13 +98,12 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
                     setCurrentPartIndex(nextPartIndex);
                     setStep(1);
                     setIsStep1Correct(null);
-                    fetchQuestion(parts[nextPartIndex].id, 3); // ขึ้นพาร์ทใหม่ เริ่มตรงกลางเหมือนเดิม
+                    fetchQuestion(parts[nextPartIndex].id, 3);
                 } else {
                     setViewState('summary');
                     setLoading(false);
                 }
             } else {
-                
                 setStep(data.nextStep);
                 setIsStep1Correct(data.isStep1Correct);
                 setQuestion(data.nextQuestion);
@@ -125,9 +122,7 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
         try {
             const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/pretest/submit`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, results: finalResults })
             });
 
@@ -295,17 +290,24 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '30px' }}>
                                     {['A', 'B', 'C', 'D'].map((opt) => {
                                         const isSelected = selectedOption === opt;
+                                        const rawText = String(question[`option_${opt.toLowerCase()}`] || '');
+                                        
+                                        const hasPrefixFromDB = /^[ก-ฮA-Za-z][.\)]\s*/.test(rawText.trim());
+                                        
                                         return (
                                             <div
                                                 key={opt}
                                                 onClick={() => setSelectedOption(opt)}
                                                 className={`option-card ${isSelected ? 'selected' : ''}`}
                                             >
-                                                <span style={{ fontWeight: '600', marginRight: '12px', color: isSelected ? '#1A365D' : '#4B5563' }}>
-                                                    {choiceMap[opt]}
-                                                </span>
+                                                {/* ถ้าระบบไม่ได้ใส่ ก.ข.ค.ง. มาให้ ค่อยเอา choiceMap มาช่วยเติม */}
+                                                {!hasPrefixFromDB && (
+                                                    <span style={{ fontWeight: '600', marginRight: '12px', color: isSelected ? '#1A365D' : '#4B5563' }}>
+                                                        {choiceMap[opt]}
+                                                    </span>
+                                                )}
                                                 <span style={{ color: '#374151', fontSize: '15px', lineHeight: '1.5' }}>
-                                                    {question[`option_${opt.toLowerCase()}`]}
+                                                    {rawText}
                                                 </span>
                                             </div>
                                         );
