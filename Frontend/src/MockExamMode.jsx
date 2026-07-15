@@ -15,7 +15,6 @@ export default function MockExamMode({ userId }) {
     const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
     const itemsPerPage = 10;
 
-    //  [เพิ่มโค้ดส่วนรูปภาพ] ประกาศ URL สำหรับชี้ไปหาโฟลเดอร์รูปภาพที่ Backend
     const imgBaseUrl = `${import.meta.env.VITE_API_BASE_URL}/upload/questions`;
 
     useEffect(() => {
@@ -82,7 +81,7 @@ export default function MockExamMode({ userId }) {
         setShowSubmitModal(false);
 
         try {
-            // ส่ง session_id และ answers (กระดาษคำตอบที่ฝนไว้) ไปให้ Backend ตรวจ
+            // ส่ง session_id และ answersให้ Backend 
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/mock/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -521,7 +520,7 @@ export default function MockExamMode({ userId }) {
                                         </div>
                                         
                                         <div style={{ paddingLeft: '57px', fontSize: '14px', color: '#4B5563' }}>
-                                            <div style={{ margin: '4px 0' }}>คำตอบของคุณ: <span style={{ color: isCorrect ? '#059669' : '#B91C1C', fontWeight: '600' }}>{userAns || 'ไม่ได้ฝนคำตอบ'}</span></div>
+                                            <div style={{ margin: '4px 0' }}>คำตอบของคุณ: <span style={{ color: isCorrect ? '#059669' : '#B91C1C', fontWeight: '600' }}>{userAns || 'ไม่ได้เลือกคำตอบ'}</span></div>
                                             {!isCorrect && <div style={{ margin: '4px 0' }}>เฉลยที่ถูกต้อง: <span style={{ color: '#059669', fontWeight: '600' }}>{q.correct_answer}</span></div>}
                                             
                                             <div style={{ marginTop: '15px', background: 'white', padding: '15px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>

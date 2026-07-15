@@ -166,7 +166,6 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
         }
     };
 
-    // ปรับให้เหลือ 4 ระดับ
     const getLevelText = (level) => {
         switch(level) {
             case 1: return { text: 'ควรปรับปรุง (Level 1)', className: 'level-1' };
