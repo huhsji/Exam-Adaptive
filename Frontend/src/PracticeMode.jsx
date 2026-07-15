@@ -537,36 +537,36 @@ export default function PracticeMode({ userId, targetPartId, onBackToPlanner }) 
                 {step === 'summary' && (
                     <div className="fade-in" style={{ textAlign: 'center', padding: '30px 0' }}>
                         
-                        {examHistory[examHistory.length - 1]?.feedback?.summary?.is_passed ? (
-                            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '15px' }}>
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                            </svg>
-                        ) : (
-                            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '15px' }}>
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="15" y1="9" x2="9" y2="15"></line>
-                                <line x1="9" y1="9" x2="15" y2="15"></line>
-                            </svg>
-                        )}
+                        {/* ไอคอนเครื่องหมายถูกสีเหลืองทอง ตามดีไซน์ใหม่ */}
+                        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '15px' }}>
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
                         
-                        <h2 style={{ color: examHistory[examHistory.length - 1]?.feedback?.summary?.is_passed ? '#10B981' : '#EF4444', margin: '0 0 10px 0', fontSize: '28px', fontWeight: '600' }}>
-                            {examHistory[examHistory.length - 1]?.feedback?.summary?.is_passed ? 'ยินดีด้วย คุณสอบผ่านเกณฑ์' : 'พยายามเข้านะ คุณยังไม่ผ่านเกณฑ์'}
+                        <h2 style={{ color: '#1A365D', margin: '0 0 10px 0', fontSize: '28px', fontWeight: '600' }}>
+                            เสร็จสิ้นการฝึกซ้อม
                         </h2>
                         <p style={{ color: '#6B7280', margin: '0 0 30px 0', fontSize: '15px' }}>
-                            เกณฑ์การผ่านของวิชานี้สำหรับวุฒิของคุณคือ {examHistory[examHistory.length - 1]?.feedback?.summary?.passing_criteria}%
+                            ระบบได้ทำการประเมินและสะสมคะแนนให้คุณเรียบร้อยแล้ว
                         </p>
                         
+                        {/* กล่องแสดงคะแนนดิบ ตอบถูก / เต็ม */}
                         <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '30px', margin: '0 auto 35px auto', maxWidth: '350px' }}>
-                            <div style={{ fontSize: '15px', color: '#4B5563', fontWeight: '500' }}>คะแนนศักยภาพ (Proficiency Score)</div>
-                            <div style={{ fontSize: '56px', color: '#1A365D', fontWeight: '600', margin: '10px 0', lineHeight: '1' }}>
-                                {examHistory[examHistory.length - 1]?.feedback?.summary?.percentage} <span style={{fontSize: '24px', color: '#9CA3AF'}}>%</span>
+                            <div style={{ fontSize: '15px', color: '#4B5563', fontWeight: '500', marginBottom: '10px' }}>
+                                จำนวนข้อที่ตอบถูก
                             </div>
-                            <div style={{ fontSize: '14px', color: '#6B7280' }}>
-                                ตอบถูก {examHistory.filter(h => h.feedback.is_correct).length} จาก 20 ข้อ
+                            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '8px', lineHeight: '1' }}>
+                                {/* ใช้ .filter นับจำนวนข้อที่ตอบถูกจาก examHistory */}
+                                <span style={{ fontSize: '56px', color: '#10B981', fontWeight: '700' }}>
+                                    {examHistory.filter(h => h.feedback.is_correct).length}
+                                </span>
+                                <span style={{ fontSize: '24px', color: '#9CA3AF', fontWeight: '600' }}>
+                                    / 20
+                                </span>
                             </div>
                         </div>
 
+                        {/* กลุ่มปุ่มกด */}
                         <div className="action-buttons">
                             <button 
                                 onClick={handleExit} 

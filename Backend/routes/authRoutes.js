@@ -12,7 +12,6 @@ router.post('/register', async (req, res) => {
         
         const { name, email, password, education_level } = req.body;
         
-        // เช็กว่ากรอกข้อมูลครบไหม
         if (!name || !email || !password || !education_level) {
             return res.status(400).json({ error: "กรุณากรอกข้อมูลให้ครบถ้วน" });
         }
@@ -39,7 +38,6 @@ router.post('/register', async (req, res) => {
     }
 });
 
-//  API: ล็อกอิน (Login)
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -53,13 +51,11 @@ router.post('/login', async (req, res) => {
 
         const user = users[0];
 
-        // 2. ตรวจสอบรหัสผ่านที่เข้ารหัสไว้
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
             return res.status(401).json({ error: "รหัสผ่านไม่ถูกต้อง" });
         }
 
-        // 3. สร้างบัตรผ่าน JWT Token
         const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: '1d' });
 
         

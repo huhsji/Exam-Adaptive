@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// API ดึงรายชื่อหมวดวิชาหลัก พร้อมคำนวณ % ความคืบหน้าของผู้ใช้
+//  ดึงรายชื่อหมวดวิชาหลัก พร้อมคำนวณ % ความคืบหน้าของผู้ใช้
 router.get('/categories', async (req, res) => {
     try {
         const { user_id } = req.query;
@@ -11,17 +11,17 @@ router.get('/categories', async (req, res) => {
             return res.status(400).json({ error: "กรุณาส่ง user_id มาด้วยครับ" });
         }
 
-        // 1. ดึงวุฒิการศึกษาของผู้ใช้
+        //  ดึงวุฒิการศึกษาของผู้ใช้
         const [[userInfo]] = await db.query(`SELECT education_level FROM users WHERE id = ?`, [user_id]);
         
-        // บังคับเช็กวุฒิ: ถ้าไม่มีข้อมูลในฐานข้อมูล ให้โยน Error ออกไปเลย
+        // บังคับเช็กวุฒิ: ถ้าไม่มีข้อมูลในฐานข้อมูล ให้โยน Error 
         if (!userInfo || !userInfo.education_level) {
             return res.status(400).json({ error: "ไม่พบข้อมูลวุฒิการศึกษาของผู้ใช้ กรุณาตรวจสอบข้อมูลในระบบ" });
         }
         
         const userEdu = userInfo.education_level;
 
-        // 2. ดึงหมวดวิชา นับจำนวนพาร์ท และรวมคะแนนสะสมทั้งหมดของผู้ใช้คนนี้
+        //  ดึงหมวดวิชา นับจำนวนพาร์ท และรวมคะแนนสะสมทั้งหมดของผู้ใช้คนนี้
         const [categoriesData] = await db.query(`
             SELECT 
                 p.category, 
@@ -33,7 +33,7 @@ router.get('/categories', async (req, res) => {
             GROUP BY p.category
         `, [user_id]);
 
-        // 3. นำข้อมูลมาคำนวณเปอร์เซ็นต์และเกณฑ์การผ่าน
+        //  นำข้อมูลมาคำนวณเปอร์เซ็นต์และเกณฑ์การผ่าน
         const result = categoriesData.map(row => {
             const maxScore = row.total_parts * 100; // เช่น 18 พาร์ท = 1800 คะแนนเต็ม
             const currentPercentage = maxScore > 0 ? Math.floor((row.total_user_score / maxScore) * 100) : 0;
@@ -70,7 +70,7 @@ router.get('/categories', async (req, res) => {
     }
 });
 
-// API ดึงรายชื่อพาร์ทย่อยตามหมวดวิชา (Parts by Category)
+//ดึงรายชื่อพาร์ทย่อยตามหมวดวิชา (Parts by Category)
 router.get('/parts', async (req, res) => {
     try {
         const { category } = req.query;
@@ -84,7 +84,7 @@ router.get('/parts', async (req, res) => {
     }
 });
     
-// 1. API สร้างรอบการสอบ (รับเป็น part_id แทน)
+// สร้างรอบการสอบ (รับเป็น part_id แทน)
 router.post('/start', async (req, res) => {
     try {
         const { user_id, part_id } = req.body;
@@ -137,7 +137,7 @@ router.get('/question', async (req, res) => {
 
         // 2. ดึงค่าความเก่งตั้งต้น
         let [skills] = await db.query(`SELECT proficiency_level FROM user_skills WHERE user_id = ? AND part_id = ?`, [user_id, partIdNum]);
-        let targetLevel = (skills.length > 0 && skills[0].proficiency_level > 0) ? skills[0].proficiency_level : 3;
+        let targetLevel = (skills.length > 0 && skills[0].proficiency_level > 0) ? parseInt(skills[0].proficiency_level, 10) : 3;
 
         // 3. ลอจิก MST (แบ่งด่านประมวลผล)
         let currentStage = 1;

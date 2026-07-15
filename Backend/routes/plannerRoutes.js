@@ -119,7 +119,6 @@ router.post('/generate', async (req, res) => {
             return res.status(400).json({ error: "ระยะเวลาสั้นเกินไป ไม่สามารถจัดตารางได้ครับ" });
         }
 
-        // The 3-Day Rule: แยกวันทำ Mock Exam
         let mockExamDates = [];
         let studyDates = [];
 
@@ -133,7 +132,6 @@ router.post('/generate', async (req, res) => {
             studyDates = availableDates;
         }
 
-        //  แทรก "วันหยุดพักสมอง" (ตัด 1 วันออกทุกๆ 7 วัน)
         const activeStudyDates = studyDates.filter((_, idx) => (idx + 1) % 7 !== 0);
 
         const [allParts] = await db.query(`
@@ -148,13 +146,11 @@ router.post('/generate', async (req, res) => {
 
         if (allParts.length === 0) return res.status(400).json({ error: "ไม่พบข้อมูลรายวิชา" });
 
-        //  สายเซียน: ดึงวิชาตก (Level < 3) ถ้าไม่มีเลย ให้ดึงทั้งหมดมารีวิว (Maintenance Mode)
         let targetParts = allParts.filter(p => p.level < 3);
         if (targetParts.length === 0) {
             targetParts = [...allParts]; 
         }
 
-        //  สายมาราธอน: หารเฉลี่ยและ "วนลูปซ้ำ" ขยับเปลี่ยนวันไปเรื่อยๆ
         if (activeStudyDates.length > 0) {
             const quotaPerDay = Math.ceil(targetParts.length / activeStudyDates.length) || 1;
             let partIndex = 0;
@@ -174,7 +170,6 @@ router.post('/generate', async (req, res) => {
             }
         }
 
-        // หยอด Mock Exam 3 วันสุดท้าย
         let [[mockPart]] = await db.query(`SELECT id FROM parts WHERE category = 'Mock Exam' LIMIT 1`);
         if (!mockPart) {
             const [insertMock] = await db.query(`INSERT INTO parts (category, part_name) VALUES ('Mock Exam', 'จำลองสอบจริง (100 ข้อ จับเวลา 3 ชม.)')`);

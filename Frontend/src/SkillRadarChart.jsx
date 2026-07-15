@@ -32,6 +32,14 @@ export default function SkillRadarChart({ userId, category }) {
         return shortName.length > 15 ? shortName.substring(0, 15) + '...' : shortName;
     };
 
+    const getLevelDescription = (level) => {
+        if (level >= 5) return 'ดีเยี่ยม (Level 5)';
+        if (level >= 4) return 'ดีมาก (Level 4)';
+        if (level >= 3) return 'ดี (Level 3)';
+        if (level >= 2) return 'พอใช้ (Level 2)';
+        return 'ควรปรับปรุง (Level 1)';
+    };
+
     if (data.length === 0) return (
         <div style={{ height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
             <span style={{ color: '#94A3B8' }}>กำลังโหลดกราฟ...</span>
@@ -102,7 +110,7 @@ export default function SkillRadarChart({ userId, category }) {
                         <Tooltip 
                             contentStyle={{ borderRadius: '8px', border: `1px solid ${theme.main}`, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', fontSize: '13px', fontFamily: '"Kanit", sans-serif' }}
                             itemStyle={{ color: theme.main, fontWeight: 'bold' }}
-                            formatter={(value) => [`Level ${value} / 5`, 'ระดับ']}
+                            formatter={(value) => [`${getLevelDescription(value)}`, 'ระดับ']}
                         />
                     </RadarChart>
                 </ResponsiveContainer>

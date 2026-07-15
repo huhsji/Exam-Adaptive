@@ -166,12 +166,13 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
         }
     };
 
+    // ปรับให้เหลือ 4 ระดับ
     const getLevelText = (level) => {
         switch(level) {
-            case 1: return { text: 'พื้นฐาน (Level 1)', className: 'level-1' };
-            case 2: return { text: 'ปานกลาง (Level 2)', className: 'level-2' };
+            case 1: return { text: 'ควรปรับปรุง (Level 1)', className: 'level-1' };
+            case 2: return { text: 'พอใช้ (Level 2)', className: 'level-2' };
             case 3: return { text: 'ดี (Level 3)', className: 'level-3' };
-            case 4: return { text: 'ดีเยี่ยม (Level 4)', className: 'level-4' };
+            case 4: return { text: 'ดีมาก (Level 4)', className: 'level-4' };
             default: return { text: 'ยังไม่ประเมิน', className: '' };
         }
     };
@@ -206,9 +207,11 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
                 .result-table th { background: #F8FAFC; color: #1E293B; padding: 14px 16px; font-weight: 600; font-size: 15px; border-bottom: 2px solid #E2E8F0; }
                 .result-table td { padding: 12px 16px; border-bottom: 1px solid #F1F5F9; color: #334155; font-size: 14px; vertical-align: middle; }
                 .result-table tr:last-child td { border-bottom: none; }
-                .level-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; text-align: center; width: 120px; }
+                .level-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; text-align: center; width: 140px; }
+                
+                /* สีสำหรับ 4 Level */
                 .level-1 { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
-                .level-2 { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+                .level-2 { background: #FFEDD5; color: #C2410C; border: 1px solid #FED7AA; }
                 .level-3 { background: #E0E7FF; color: #4338CA; border: 1px solid #C7D2FE; }
                 .level-4 { background: #D1FAE5; color: #047857; border: 1px solid #A7F3D0; }
 
@@ -216,7 +219,7 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
                     .modal-box { padding: 25px 20px; margin: 10px; width: 100%; max-height: 85vh; }
                     .modal-box h2 { font-size: 20px !important; }
                     .result-table th, .result-table td { padding: 10px 8px; font-size: 13px; }
-                    .level-badge { width: 100px; padding: 4px 8px; font-size: 12px; }
+                    .level-badge { width: 120px; padding: 4px 8px; font-size: 12px; }
                 }
             `}</style>
 
@@ -255,7 +258,7 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
                                 onClick={handleSkip}
                                 style={{ padding: '10px', background: 'transparent', color: '#64748B', border: 'none', fontSize: '14px', textDecoration: 'underline', cursor: 'pointer' }}
                             >
-                                ข้ามไปก่อน (ระบบจะบันทึกเป็นพื้นฐาน Level 1)
+                                ข้ามไปก่อน (ระบบจะบันทึกเป็นควรปรับปรุง Level 1)
                             </button>
                         </div>
                     </div>
@@ -300,7 +303,6 @@ const Pretest = ({ userId, onComplete, isRetake = false }) => {
                                                 onClick={() => setSelectedOption(opt)}
                                                 className={`option-card ${isSelected ? 'selected' : ''}`}
                                             >
-                                                {/* ถ้าระบบไม่ได้ใส่ ก.ข.ค.ง. มาให้ ค่อยเอา choiceMap มาช่วยเติม */}
                                                 {!hasPrefixFromDB && (
                                                     <span style={{ fontWeight: '600', marginRight: '12px', color: isSelected ? '#1A365D' : '#4B5563' }}>
                                                         {choiceMap[opt]}

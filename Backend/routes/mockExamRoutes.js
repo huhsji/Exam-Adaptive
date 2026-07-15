@@ -41,13 +41,10 @@ router.post('/generate', async (req, res) => {
                 const partId = row.id;
                 const partName = row.part_name;
                 
-                // ถ้าไม่มีข้อมูลถือว่าเป็น Level 1
                 const diffLevel = userSkillMap[partName] || 1; 
                 const easyLevel = Math.max(diffLevel - 1, 1);
                 const challengeLevel = Math.min(diffLevel + 1, 5); 
 
-                // ดึงข้อสอบมาตุนไว้ ก่อน (เพิ่ม LIMIT เป็น 200 เผื่อข้อสอบขาด)
-                //   ดึงฟิลด์ question_image และ option_a_image ถึง option_d_image ขึ้นมาด้วย
                 const [qList] = await db.query(`
                     SELECT id, part_id, difficulty_level, question_text, question_image, 
                            option_a, option_b, option_c, option_d,
@@ -88,7 +85,6 @@ router.post('/generate', async (req, res) => {
             currentPool.sort(() => Math.random() - 0.5);
             hardPool.sort(() => Math.random() - 0.5);
 
-            // โควตา 10 - 80 - 10
             const easyQuota = Math.floor(quotaLimit * 0.1); 
             const hardQuota = Math.floor(quotaLimit * 0.1); 
 
@@ -131,7 +127,7 @@ router.post('/generate', async (req, res) => {
                     `, [partIds, ultimateFillAmount]);
 
                     emergencyQuestions.forEach(q => {
-                        // จัดรูป options เป็น Object เหมือนด้านบน
+                        // จัดรูป options เป็น Object 
                         const optionsArray = [
                             { text: q.option_a, image: q.option_a_image },
                             { text: q.option_b, image: q.option_b_image },
@@ -150,24 +146,20 @@ router.post('/generate', async (req, res) => {
             return finalQuestions.slice(0, quotaLimit);
         };
 
-        // สั่งดึงข้อสอบ
+        // ดึงข้อสอบ
         const part1 = await fetchQuestions('คิดวิเคราะห์', 50);
         const part2 = await fetchQuestions('อังกฤษ', 25);
         const part3 = await fetchQuestions('ข้าราชการที่ดี', 25);
 
-        // เอาข้อสอบทั้ง 3 ก้อนมารวมร่างกัน
         let allQuestions = [...part1, ...part2, ...part3];
 
-        // สลับข้อสอบให้มั่ว (Shuffle) เหมือนข้อสอบจริง
         allQuestions.sort(() => Math.random() - 0.5);
 
-        // สร้างประวัติในตาราง exam_sessions เพื่อออก session_id
         const [sessionResult] = await db.query(
             `INSERT INTO exam_sessions (user_id, session_type) VALUES (?, ?)`,
             [user_id, 'mock_exam_100']
         );
         
-        // ส่งชุดข้อสอบกลับไปให้หน้าบ้าน
         res.json({
             message: "สร้างชุดข้อสอบ Mock Exam สำเร็จ",
             session_id: sessionResult.insertId,

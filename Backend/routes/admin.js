@@ -7,25 +7,22 @@ const db = require('../db');
 const XLSX = require('xlsx');
 const fs = require('fs');
 
-//  นำเข้า Cloudinary
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-//  คอนฟิกค่า Cloudinary 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-//  เปลี่ยน Storage ของภาพข้อสอบ ให้วิ่งขึ้น Cloudinary
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'questions', // สร้างโฟลเดอร์ชื่อ questions บนคลาวด์ให้อัตโนมัติ
-        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'], // อนุญาตเฉพาะไฟล์ภาพ
+        folder: 'questions', // สร้างโฟลเดอร์ชื่อ questions บนคลาวด์
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'], 
         public_id: (req, file) => {
-            // ตั้งชื่อไฟล์ใหม่ให้ไม่ซ้ำกัน
+            
             const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
             return `img-${uniqueSuffix}`; 
         }
@@ -78,7 +75,7 @@ router.post('/api/admin/questions', questionUpload, async (req, res) => {
     }
 });
 
-// API ดึงรายชื่อวิชาทั้งหมดเพื่อเอาไปทำ Dropdown
+//  ดึงรายชื่อวิชาทั้งหมดเพื่อเอาไปทำ Dropdown
 router.get('/api/admin/parts', async (req, res) => {
     try {
         const [parts] = await db.query('SELECT id, part_name, category FROM parts');

@@ -60,7 +60,6 @@ router.post('/answer', async (req, res) => {
     try {
         const { userId, partId, questionId, selectedOption, step, isStep1Correct } = req.body;
 
-        // ดึงเฉลย "และตัวเลือกทั้งหมด" มาจากฐานข้อมูล
         const [qRows] = await db.execute(`
             SELECT option_a, option_b, option_c, option_d, correct_answer 
             FROM questions 
@@ -80,7 +79,6 @@ router.post('/answer', async (req, res) => {
         for (const opt of options) {
             const optText = String(qRow[`option_${opt.toLowerCase()}`] || '').trim();
             
-            // เช่น ถ้าเฉลยคือ "ค." และ optText คือ "ค. นโยบาย" มันจะ Match กันทันที!
             if (dbCorrectAns && optText.toLowerCase().startsWith(dbCorrectAns.toLowerCase())) {
                 expectedKey = opt;
                 break;
